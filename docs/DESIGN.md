@@ -42,56 +42,76 @@ The database might consist of four tables:
 
 1. A request table to store slack commands to the application
 2. A vehicle table to store vehicle information
+3. A vehicle type table to store different models of vehicles (van, golf cart, etc.)
 3. A reservation table referencing the vehicle table 
-4. An admin table
 
 #### Request
 ```
  id: primary int,
  command_name: text,
- body: text,
+ arg_body: text,
  response_url: text,
  user_id: text,
- user_name: text,
- channel_name: text,
+ user_name: text
 ```
 
 Note that [`slack_user_id`](https://api.slack.com/interactivity/slash-commands#app_command_handling) is unique to 
 the message's user.
 
+#### Vehicle Type
+```
+ id: primary int,
+ name: text unique index
+```
+
 #### Vehicle
 ```
  id: primary int,
  name: text,
+ type: foreign int references vehicle_type.id
 ```
+
+Here the vehicle type table provides a faster way to index vehicles by their model: for now, van and golf cart.
+
+Side note: the frontend portal will have both a dropdown pre-populated with previous vehicle types, allowing for
+insertion with a seperate input field.
 
 #### Reservation
 ```
  id: primary int,
  vehicle_id: foreign int references vehicle.id,
  request_id: foreign int references request.id,
- start_day: date,
- end_day: date,
- start_time: timestamp,
- end_time: timestamp
-```
-
-#### Admin
-```
- id: primary int,
- username: text unique,
- password: text (hash),
+ start: timestamptz,
+ end: timestamptz
 ```
 
 ### API
 
-The API is proposed to be written in TypeScript utilizing the Nest.JS framework and TypeORM as the ORM. All are
-tools @Simponic has experience with.
+The API is proposed to be written in TypeScript utilizing the Nest.JS framework and TypeORM as the ORM.
+
+#### Routes
+All routes require a webhook request from Slack, or a correctly authenticated admin session (probably placed
+in a cookie) - a hashed global admin password read from an environment variable will be satisfactory for 
+this small application.
+
+```
+/api/reservations - POST
+/api/reservations - GET
+/api/reservations/:id - DELETE
+/api/reservations/:id - GET
+/api/reservations/filter?start_time&end_time&slack_user_id - GET
+/api/reservations/vehicles/:vehicle_id - GET 
+
+/api/vehicles - POST
+/api/vehicles - GET
+/api/vehicles/free?start_time&end_time&time_period&type_id - GET ;; Between start_time and end_time for time_period and optional vehicle type
+/api/vehicles/:id - GET
+```
 
 ### Frontend
 
-The frontend is proposed to be written in React, using vanilla JS which @Simponic and @parkerfreestone have 
-experience with.
+The frontend is proposed to be written in React and server-side rendered with Next.JS, using TypeScript which 
+@Simponic and @parkerfreestone have experience with.
 
 Additionally, @Simponic has experience with https://fullcalendar.io/, which provides a really easy to use
 drag-and-droppable calendar component with hooks to listen to user events. This will be very nice to visualize
@@ -126,4 +146,3 @@ the current design is made with extensibility for these features in the future.
 * Some vehicles can only be reserved by certain users.
 * Many to many relationship between vehicles and reservations - allowing for reservations to be composed of multiple
   vehicles at a time.
-
