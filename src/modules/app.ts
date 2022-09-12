@@ -1,8 +1,9 @@
 import { Module } from '@nestjs/common';
 import { RenderModule } from 'nest-next';
-import { AppController } from './app.controller';
+import { AppController } from '../controllers/app';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { databaseConfig } from './database/config';
+import { databaseConfig } from '../database/config';
+import { VehicleModule } from './vehicle';
 import Next from 'next';
 
 @Module({
@@ -13,7 +14,8 @@ import Next from 'next';
         conf: { useFilesystemPublicRoutes: false },
       }),
     ),
-    TypeOrmModule.forRoot(databaseConfig)
+    TypeOrmModule.forRoot(databaseConfig),
+    VehicleModule,
   ],
   controllers: [AppController],
 })
