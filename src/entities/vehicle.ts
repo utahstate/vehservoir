@@ -10,7 +10,7 @@ export class Vehicle {
   @Column({ nullable: false })
   name: string;
 
-  @ManyToOne(() => VehicleType, (type) => type.vehicles)
+  @ManyToOne(() => VehicleType, (type) => type.vehicles, { onDelete: 'CASCADE' })
   type: VehicleType;
 
   @OneToMany(() => Reservation, (reservation: Reservation) => reservation.vehicle)

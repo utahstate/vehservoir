@@ -13,7 +13,7 @@ export class Reservation {
   @Column({ nullable: false, type: 'timestamptz' })
   end: Date;
 
-  @ManyToOne(() => Vehicle, (vehicle: Vehicle) => vehicle.reservations)
+  @ManyToOne(() => Vehicle, (vehicle: Vehicle) => vehicle.reservations, { onDelete: 'CASCADE' })
   vehicle: Vehicle;
 
   @OneToOne(() => Request)

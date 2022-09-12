@@ -51,8 +51,8 @@ The database might consist of four tables:
  command_name: text,
  arg_body: text,
  response_url: text,
- user_id: text,
- user_name: text
+ slack_user_id: text,
+ name: text
 ```
 
 Note that [`slack_user_id`](https://api.slack.com/interactivity/slash-commands#app_command_handling) is unique to 
@@ -90,23 +90,41 @@ insertion with a seperate input field.
 The API is proposed to be written in TypeScript utilizing the Nest.JS framework and TypeORM as the ORM.
 
 #### Routes
-All routes require a webhook request from Slack, or a correctly authenticated admin session (probably placed
+Most routes require a valid webhook request from Slack or a correctly authenticated admin session (probably placed
 in a cookie) - a hashed global admin password read from an environment variable will be satisfactory for 
 this small application.
 
 ```
 /api/reservations - POST
-/api/reservations - GET
+/api/reservations?start_time&end_time&slack_user_id - GET
 /api/reservations/:id - DELETE
 /api/reservations/:id - GET
-/api/reservations/filter?start_time&end_time&slack_user_id - GET
 /api/reservations/vehicles/:vehicle_id - GET 
 
 /api/vehicles - POST
-/api/vehicles - GET
-/api/vehicles/free?start_time&end_time&time_period&type_id - GET ;; Between start_time and end_time for time_period and optional vehicle type
+/api/vehicles?type&name - GET
+/api/vehicles/free?start_time&end_time&time_period&vehicle_type - GET ;; Between start_time and end_time for time_period and optional vehicle type
 /api/vehicles/:id - GET
+/api/vehicles/:id - DELETE
 ```
+
+#### Reservation Attempt
+A reservation POST request may look like:
+```
+{
+  slack_user_id,
+  response_url,
+  start_time,
+  end_time,
+  vehicle_id?,
+  vehicle_type?,
+}
+```
+
+An attempt should be made to send an [ephemeral](https://api.slack.com/messaging/managing#ephemeral) message back to `response_url`
+with the status of the reservation:
+* No vehicles free - send help for the /api/vehicles/free command
+* Vehicle reserved - send the reservation details
 
 ### Frontend
 
@@ -122,7 +140,7 @@ the vehicle reservations.
 ### M0 (1 week)
 - [ ] Project initiated - simple Nest.JS routes setup and rendered with React
 - [ ] Schema successfully migrated
-- [ ] Admin authentication & initial portal implemented
+- [ ] Barebones API - can request Vehicles and Reservations
 
 ### M1 (1.5 - 2.5 weeks)
 - [ ] Users can successfully make a vehicle reservation
@@ -130,8 +148,9 @@ the vehicle reservations.
 - [ ] Users can filter vehicles by periods available
 - [ ] Safeguards implemented to prevent double booking
 - [ ] Calendar rendering vehicle reservations
+- [ ] Slack integration
 
-### M2 (<1 week)
+### M2 (1 week)
 - [ ] "Bug free"
 - [ ] Slack app deployed to USU IT workspace
 - [ ] Documentation not covered in M0 and M1 "sprints"
