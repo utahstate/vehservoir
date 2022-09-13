@@ -87,6 +87,10 @@ describe("VehicleController", () => {
     it("should list all vehicles", async () => {
       expect(await vehicleController.index("")).toEqual(vehicles);
     });
+
+    it("should filter by type name when injected from url query", async () => {
+      expect(await vehicleController.index("Minivan")).toEqual(vehicles.filter((x) => x.type.name === "Minivan"));
+    });
   });
 
   describe("create", () => {

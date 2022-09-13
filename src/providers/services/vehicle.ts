@@ -36,7 +36,7 @@ export class VehicleService {
 //    return vehicles in reserved intersect timechunks
 //  }
 
-  async vehiclesWithTypeBy(typeOptions: Record<string, any>) : Promise<Vehicle[]> {
+  async findVehiclesWithTypeBy(typeOptions: Record<string, any>) : Promise<Vehicle[]> {
     return this.vehicleRepo.find({
       relations: {
         type: true

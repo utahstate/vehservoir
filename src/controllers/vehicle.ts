@@ -13,7 +13,7 @@ export class VehicleController {
   @Get('/api/vehicles')
   async index(@Query('type') type : string) : Promise<Vehicle[]> {
     if (type) {
-      return await this.vehicleService.vehiclesWithTypeBy({ name: type });
+      return await this.vehicleService.findVehiclesWithTypeBy({ name: type });
     }
     return await this.vehicleService.allVehicles();
   }
