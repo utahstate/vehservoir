@@ -11,12 +11,13 @@ const vehicleTypes = [
   {
     id: ++vehicleTypeGlobalId,
     name: "Golf Cart",
-  }, 
+  },
   {
     id: ++vehicleTypeGlobalId,
     name: "Minivan",
-  }
-].map(vehicleType => (newVehicleType => {
+  },
+].map((vehicleType) =>
+  ((newVehicleType) => {
     newVehicleType.name = vehicleType.name;
     newVehicleType.id = vehicleType.id;
     return newVehicleType;
@@ -34,9 +35,9 @@ const vehicles = [
     id: ++vehicleGlobalId,
     name: "Logan's Minivan",
     type: vehicleTypes[1],
-  }
-].map(vehicle => 
-  (newVehicle => {
+  },
+].map((vehicle) =>
+  ((newVehicle) => {
     newVehicle.id = vehicle.id;
     newVehicle.name = vehicle.name;
     newVehicle.type = vehicle.type as unknown as VehicleType;
@@ -44,30 +45,37 @@ const vehicles = [
   })(new Vehicle())
 ) as unknown as Vehicle[];
 
-const vehicleTypeEquality = (vehicleType : VehicleType, options : any) : Boolean => {
+const vehicleTypeEquality = (
+  vehicleType: VehicleType,
+  options: any
+): Boolean => {
   return vehicleType.name === options.name || vehicleType.id === options.id;
-}
+};
 const vehicleServiceMocks = {
   allVehicleTypes: async () => vehicleTypes,
-  allVehicles: async () : Promise<Vehicle[]> => vehicles,
-  findTypeBy: async (options: any) : Promise<VehicleType | undefined> => 
-                vehicleTypes.find((vehicleType) => vehicleTypeEquality(vehicleType, options)),
-  findVehiclesWithTypeBy: async (options: any) : Promise<Vehicle[]> => 
-                vehicles.filter((vehicle) => vehicleTypeEquality(vehicle.type, options)),
-  save: async (vehicle: Vehicle) : Promise<Vehicle> => { 
+  allVehicles: async (): Promise<Vehicle[]> => vehicles,
+  findTypeBy: async (options: any): Promise<VehicleType | undefined> =>
+    vehicleTypes.find((vehicleType) =>
+      vehicleTypeEquality(vehicleType, options)
+    ),
+  findVehiclesBy: async (options: any): Promise<Vehicle[]> =>
+    vehicles.filter((vehicle) =>
+      vehicleTypeEquality(vehicle.type, options.type)
+    ),
+  save: async (vehicle: Vehicle): Promise<Vehicle> => {
     vehicle.id = ++vehicleGlobalId;
-    vehicles.push(vehicle); 
-    return vehicle; 
+    vehicles.push(vehicle);
+    return vehicle;
   },
-  saveType: async (vehicleType: VehicleType) : Promise<VehicleType> => { 
+  saveType: async (vehicleType: VehicleType): Promise<VehicleType> => {
     vehicleType.id = ++vehicleTypeGlobalId;
     vehicleTypes.push(vehicleType);
-    return vehicleType; 
-  }
+    return vehicleType;
+  },
 };
 
 describe("VehicleController", () => {
-  let vehicleController : VehicleController;
+  let vehicleController: VehicleController;
 
   beforeEach(async () => {
     const testingModule: TestingModule = await Test.createTestingModule({
@@ -75,9 +83,9 @@ describe("VehicleController", () => {
       providers: [
         {
           provide: VehicleService,
-          useValue: vehicleServiceMocks
-        }
-      ]
+          useValue: vehicleServiceMocks,
+        },
+      ],
     }).compile();
 
     vehicleController = testingModule.get<VehicleController>(VehicleController);
@@ -89,7 +97,9 @@ describe("VehicleController", () => {
     });
 
     it("should filter by type name when injected from url query", async () => {
-      expect(await vehicleController.index("Minivan")).toEqual(vehicles.filter((x) => x.type.name === "Minivan"));
+      expect(await vehicleController.index("Minivan")).toEqual(
+        vehicles.filter((x) => x.type.name === "Minivan")
+      );
     });
   });
 
@@ -100,7 +110,7 @@ describe("VehicleController", () => {
         type: {
           name: "Minivan",
           new: false,
-        }
+        },
       };
       expect(await vehicleController.createVehicle(body)).toEqual({
         name: body.name,
@@ -108,7 +118,7 @@ describe("VehicleController", () => {
         type: {
           id: 2,
           name: "Minivan",
-        }
+        },
       });
     });
 
@@ -118,14 +128,14 @@ describe("VehicleController", () => {
         type: {
           name: "Submarine",
           new: false,
-        }
+        },
       };
       try {
         await vehicleController.createVehicle(body);
       } catch (e) {
         expect(e).toBeInstanceOf(HttpException);
       }
-    })
+    });
 
     it("should create a vehicle with a new type if it's not found", async () => {
       const body: VehicleCreationDto = {
@@ -133,7 +143,7 @@ describe("VehicleController", () => {
         type: {
           name: "Submarine",
           new: true,
-        }
+        },
       };
       expect(await vehicleController.createVehicle(body)).toEqual({
         name: body.name,
@@ -141,8 +151,8 @@ describe("VehicleController", () => {
         type: {
           id: 3,
           name: "Submarine",
-        }
+        },
       });
     });
-  })
+  });
 });

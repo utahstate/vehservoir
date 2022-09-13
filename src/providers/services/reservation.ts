@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { DeleteResult, Repository } from "typeorm";
 import { Reservation } from "../../entities/reservation";
 
 @Injectable()
@@ -10,27 +10,27 @@ export class ReservationService {
     private reservationRepo: Repository<Reservation>
   ) {}
 
-  // @GET
-  async allReservations(): Promise<Reservation[]> {
-    return await this.reservationRepo.find();
-  }
-
-  async findOne(options: Record<string, any>) {
-    return await this.reservationRepo.findOne({
+  async findReservationsBy(
+    options: Record<string, any>,
+    relations: Record<string, Boolean>
+  ): Promise<Reservation[]> {
+    return this.reservationRepo.find({
+      relations,
       where: options,
-      relations: {
-        vehicle: true,
-      },
     });
   }
 
-  // @POST
+  async findOne(options: Record<string, any>): Promise<Reservation | null> {
+    return this.reservationRepo.findOne({
+      where: options,
+    });
+  }
+
   async save(reservation: Reservation): Promise<Reservation> {
     return this.reservationRepo.save(reservation);
   }
 
-  // @DELETE
-  async remove(id: number): Promise<void> {
-    await this.reservationRepo.delete(id);
+  async remove(id: number): Promise<DeleteResult> {
+    return this.reservationRepo.delete(id);
   }
 }
