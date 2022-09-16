@@ -1,4 +1,10 @@
-import { Column, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+import {
+  Column,
+  Entity,
+  ManyToOne,
+  OneToMany,
+  PrimaryGeneratedColumn,
+} from "typeorm";
 import { Reservation } from "./reservation";
 import { VehicleType } from "./vehicle_type";
 
@@ -10,9 +16,14 @@ export class Vehicle {
   @Column({ nullable: false })
   name: string;
 
-  @ManyToOne(() => VehicleType, (type) => type.vehicles, { onDelete: 'CASCADE' })
+  @ManyToOne(() => VehicleType, (type) => type.vehicles, {
+    onDelete: "CASCADE",
+  })
   type: VehicleType;
 
-  @OneToMany(() => Reservation, (reservation: Reservation) => reservation.vehicle)
+  @OneToMany(
+    () => Reservation,
+    (reservation: Reservation) => reservation.vehicle
+  )
   reservations: Reservation[];
 }

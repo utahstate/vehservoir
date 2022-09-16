@@ -5,10 +5,10 @@ export class Request {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ nullable: false })  
+  @Column({ nullable: false })
   command_name: string;
 
-  @Column({ nullable: false })  
+  @Column({ nullable: false })
   arg_body: string;
 
   @Column({ nullable: false })

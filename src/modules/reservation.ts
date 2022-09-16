@@ -3,9 +3,10 @@ import { TypeOrmModule } from "@nestjs/typeorm";
 import { ReservationController } from "../controllers/reservation";
 import { Reservation } from "../entities/reservation";
 import { ReservationService } from "../providers/services/reservation";
+import { VehicleModule } from "./vehicle";
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Reservation])],
+  imports: [TypeOrmModule.forFeature([Reservation]), VehicleModule],
   controllers: [ReservationController],
   providers: [ReservationService],
   exports: [ReservationService],

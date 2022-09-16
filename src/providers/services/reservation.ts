@@ -10,6 +10,10 @@ export class ReservationService {
     private reservationRepo: Repository<Reservation>
   ) {}
 
+  async allReservations(): Promise<Reservation[]> {
+    return this.reservationRepo.find();
+  }
+
   async findReservationsBy(
     options: Record<string, any>,
     relations: Record<string, Boolean>
@@ -30,7 +34,7 @@ export class ReservationService {
     return this.reservationRepo.save(reservation);
   }
 
-  async remove(id: number): Promise<DeleteResult> {
-    return this.reservationRepo.delete(id);
+  async remove(reservation: Reservation): Promise<DeleteResult> {
+    return this.reservationRepo.delete(reservation);
   }
 }

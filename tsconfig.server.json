@@ -12,6 +12,6 @@
     "noEmit": false,
     "allowJs": false
   },
-  "include": ["./src/**/*"],
+  "include": ["./src/**/*", "./dto/**/*"],
   "exclude": ["node_modules"]
 }
