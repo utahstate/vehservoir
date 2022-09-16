@@ -23,7 +23,7 @@ import { DeleteResult } from "typeorm";
 @Controller()
 export class VehicleController {
   constructor(private vehicleService: VehicleService) {}
-
+  
   @Get("/api/vehicles")
   async index(@Query("type") name: string): Promise<Vehicle[]> {
     if (name) {
@@ -159,5 +159,24 @@ export class VehicleController {
         return { ...vehicleAvailability, availability };
       })
       .filter((vehicleAvailability) => vehicleAvailability.availability.length);
+  }
+
+  @Post('/api/vehicles')
+  async createVehicle(@Body() vehiclePayload: VehicleCreationDto) : Promise<Vehicle> {
+    let vehicleType = await this.vehicleService.findTypeBy({ name: vehiclePayload.type.name });
+
+    if (!vehicleType && vehiclePayload.type.new) {
+      const newVehicleType = new VehicleType();
+      newVehicleType.name = vehiclePayload.type.name;
+      vehicleType = await this.vehicleService.saveType(newVehicleType);
+    } else if (!vehicleType) {
+      throw new HttpException(`Vehicle type with name ${vehiclePayload.type.name} cannot be found - please create it.`, HttpStatus.NOT_FOUND);
+    }
+
+    const newVehicle = new Vehicle();
+    newVehicle.name = vehiclePayload.name;
+    newVehicle.type = vehicleType;
+
+    return await this.vehicleService.save(newVehicle);
   }
 }

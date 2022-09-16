@@ -5,6 +5,7 @@ import { VehicleType } from "../entities/vehicle_type";
 import { VehicleController } from "../controllers/vehicle";
 import { VehicleService } from "../providers/services/vehicle";
 
+
 @Module({
   imports: [TypeOrmModule.forFeature([Vehicle, VehicleType])],
   controllers: [VehicleController],

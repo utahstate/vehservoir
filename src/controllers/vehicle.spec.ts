@@ -281,6 +281,7 @@ describe("VehicleController", () => {
       }
     });
 
+
     it("should create a vehicle with a new type if it's not found", async () => {
       const body: VehicleCreationDto = {
         name: "Logan's Gamer Submarine",
