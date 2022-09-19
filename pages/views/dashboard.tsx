@@ -1,35 +1,31 @@
 import React from "react";
+import AdminNavigation from "components/AdminNavigation";
+import type { NextPage, NextPageContext } from "next/types";
 
-const Dashboard = () => {
-  const handleSubmit = (e: React.SyntheticEvent) => {
-    e.preventDefault();
-    try {
-      fetch("/admin/logout", {
-        method: "post",
-      })
-        .then((res) => {
-          if (res.ok) {
-            location.replace("/admin/login");
-          }
-        })
-        .catch((err) => console.log(err));
+type Props = {
+  user: any;
+};
 
-      return true;
-    } catch (err) {
-      console.log(err);
-      return false;
-    }
-  };
-
+const Dashboard: NextPage<Props> = (props) => {
   return (
-    <div className="container">
-      <h1>Dashboard</h1>
-      <p>Welcome to the Vehservoir admin dashboard.</p>
-      <button className="btn btn-ghost" onClick={handleSubmit}>
-        Logout
-      </button>
-    </div>
+    <>
+      <AdminNavigation />
+      <div className="container">
+        <h1>Dashboard </h1>
+        <p>Welcome to the Vehservoir admin dashboard.</p>
+      </div>
+    </>
   );
+};
+
+type PageContext = NextPageContext & {
+  query: Props;
+};
+
+Dashboard.getInitialProps = async (context: PageContext): Promise<Props> => {
+  return {
+    user: context.query,
+  };
 };
 
 export default Dashboard;

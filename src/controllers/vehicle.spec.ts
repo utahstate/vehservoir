@@ -49,21 +49,23 @@ const vehicleTypeEquality = (vehicleType : VehicleType, options : any) : Boolean
 }
 const vehicleServiceMocks = {
   allVehicleTypes: async () => vehicleTypes,
-  allVehicles: async () : Promise<Vehicle[]> => vehicles,
-  findTypeBy: async (options: any) : Promise<VehicleType | undefined> => 
-                vehicleTypes.find((vehicleType) => vehicleTypeEquality(vehicleType, options)),
-  findVehiclesWithTypeBy: async (options: any) : Promise<Vehicle[]> => 
-                vehicles.filter((vehicle) => vehicleTypeEquality(vehicle.type, options)),
-  save: async (vehicle: Vehicle) : Promise<Vehicle> => { 
+  allVehicles: async (): Promise<Vehicle[]> => vehicles,
+  findTypeBy: async (options: any): Promise<VehicleType | undefined> =>
+    vehicleTypes.find((vehicleType) =>
+      vehicleTypeEquality(vehicleType, options)
+    ),
+  findVehiclesWithTypeBy: async (options: any): Promise<Vehicle[]> =>
+    vehicles.filter((vehicle) => vehicleTypeEquality(vehicle.type, options)),
+  save: async (vehicle: Vehicle): Promise<Vehicle> => {
     vehicle.id = ++vehicleGlobalId;
-    vehicles.push(vehicle); 
-    return vehicle; 
+    vehicles.push(vehicle);
+    return vehicle;
   },
-  saveType: async (vehicleType: VehicleType) : Promise<VehicleType> => { 
+  saveType: async (vehicleType: VehicleType): Promise<VehicleType> => {
     vehicleType.id = ++vehicleTypeGlobalId;
     vehicleTypes.push(vehicleType);
-    return vehicleType; 
-  }
+    return vehicleType;
+  },
 };
 
 describe("VehicleController", () => {

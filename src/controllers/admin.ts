@@ -5,80 +5,88 @@ import {
   Post,
   Req,
   Res,
+  Request,
+  UseGuards,
   Body,
-  UnauthorizedException,
-  HttpException,
-  HttpStatus,
 } from "@nestjs/common";
-import type { Response, Request } from "express";
-import { JwtService } from "@nestjs/jwt";
 import { AdminService } from "../providers/services/admin";
-import { LoginDto } from "../../dto/admin/Login";
+import { AuthService } from "../providers/services/auth";
+import { LocalAuthGuard } from "../auth/local-auth.guard";
+import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import type { RenderableResponse } from "nest-next";
+import { AdminRegistrationDto } from "../../dto/admin/Register";
 
 @Controller()
 export class AdminController {
   constructor(
-    private jwtService: JwtService,
-    private adminService: AdminService
+    private adminService: AdminService,
+    private authService: AuthService
   ) {}
 
-  @Render("login")
   @Get("/admin/login")
-  public index() {}
+  public loginForm(@Res() res: RenderableResponse) {
+    res.render("login", {
+      title: "Login",
+    });
+  }
 
+  @UseGuards(LocalAuthGuard)
   @Post("/admin/login")
-  async login(
-    @Body() loginPayload: LoginDto,
-    @Res({ passthrough: true }) res: Response
-  ) {
-    const userIsAuthenticated = this.adminService.userIsAuthenticated(
-      loginPayload.username,
-      loginPayload.password
-    );
-
-    if (!userIsAuthenticated) {
-      throw new HttpException(
-        {
-          status: HttpStatus.FORBIDDEN,
-          error: "Invalid Credentials",
-        },
-        HttpStatus.FORBIDDEN
-      );
-    }
-
-    const { password, ...rest } = loginPayload;
-    const access_token = this.jwtService.sign(rest);
-
-    res.cookie("jwt", access_token, { httpOnly: true });
-
-    return {
-      message: "Login Success.",
-      access_token,
-    };
+  async login(@Request() req: any) {
+    return this.authService.login(req.user);
   }
 
-  @Post("/admin/logout")
-  async logout(@Res({ passthrough: true }) res: Response) {
-    res.clearCookie("jwt");
-    return {
-      message: "Successfully Logged out...",
-    };
+  @Render("register")
+  @Get("/admin/register")
+  public registerForm() {}
+
+  @Post("/admin/register")
+  async register(@Body() adminRegistrationDto: AdminRegistrationDto) {
+    const admin = await this.adminService.create(adminRegistrationDto);
+
+    const { password, ...rest } = admin;
+
+    return rest;
   }
 
-  @Render("dashboard")
+  // @UseGuards(JwtAuthGuard)
+  // @Post("/admin/remove")
+  // async remove(@Body() adminId: number) {
+  //   const admin = await this.adminService.remove({ adminId });
+
+  //   const { password, ...rest } = admin;
+
+  //   return rest;
+  // }
+
+  // @Post("/admin/logout")
+  // async logout(@Res({ passthrough: true }) res: Response) {
+  //   res.clearCookie("jwt");
+  //   return {
+  //     message: "Successfully Logged out.",
+  //   };
+  // }
+
+  // @UseGuards(JwtAuthGuard)
   @Get("/admin/dashboard")
-  async getDashboard(@Req() req: Request) {
-    try {
-      const access_token = req.cookies["jwt"];
-      const data = await this.jwtService.verifyAsync(access_token);
+  async getDashboard(@Request() req: any, @Res() res: RenderableResponse) {
+    res.render("dashboard", req.user);
+    // const access_token = req.cookies["jwt"];
+    // const data = await this.jwtService.verifyAsync(access_token);
 
-      if (!data) {
-        throw new UnauthorizedException();
-      }
+    // if (!data) {
+    //   throw new UnauthorizedException();
+    // }
 
-      return req.user;
-    } catch (err) {
-      throw new UnauthorizedException();
-    }
+    // const admin = await this.adminService.findOne({ id: data["id"] });
+    // const { password, ...rest } = admin;
+
+    // return rest;
+    return req.user;
+  }
+
+  @Get("/admin/vehicles")
+  async getVehicles(@Res() res: RenderableResponse) {
+    res.render("vehicles");
   }
 }

@@ -1,28 +1,24 @@
 import { Injectable } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
-import * as bcrypt from "bcrypt";
+import { InjectRepository } from "@nestjs/typeorm";
+import { AdminRegistrationDto } from "../../../dto/admin/Register";
+import { Admin } from "../../entities/admin";
+import { Repository } from "typeorm";
 
 @Injectable()
 export class AdminService {
-  constructor(private configService: ConfigService) {}
+  constructor(
+    @InjectRepository(Admin) private readonly adminRepo: Repository<Admin>
+  ) {}
 
-  userIsAuthenticated(username: string, rawPassword: string): boolean | null {
-    const SALT_ROUNDS = bcrypt.genSaltSync();
-    const envPassword = this.configService.get("ADMIN_PASSWORD");
-    const envUsername = this.configService.get("ADMIN_USERNAME");
-    const hashedEnvironmentPassword = bcrypt.hashSync(envPassword, SALT_ROUNDS);
+  async create(adminRegistrationDto: AdminRegistrationDto): Promise<Admin> {
+    return this.adminRepo.save(adminRegistrationDto);
+  }
 
-    const isAuthSuccessful = bcrypt.compareSync(
-      rawPassword,
-      hashedEnvironmentPassword
-    );
+  // async remove(options: Record<string, any>) {
+  //   await this.adminRepo.delete({ where: options });
+  // }
 
-    if (
-      isAuthSuccessful &&
-      username.toLowerCase() === envUsername.toLowerCase()
-    ) {
-      return true;
-    }
-    return false;
+  async findOne(options: Record<string, any>): Promise<any> {
+    return await this.adminRepo.findOne({ where: options });
   }
 }

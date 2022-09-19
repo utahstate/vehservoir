@@ -6,6 +6,7 @@ import { databaseConfig } from '../database/config';
 import { ConfigModule } from "@nestjs/config";
 import { VehicleModule } from "./vehicle";
 import { AdminModule } from "./admin";
+import { AuthModule } from "./auth";
 import Next from "next";
 
 @Module({
@@ -22,6 +23,7 @@ import Next from "next";
     }),
     VehicleModule,
     AdminModule,
+    AuthModule,
   ],
   controllers: [AppController],
 })

@@ -4,7 +4,7 @@ interface ErrorProps {
   error: string;
 }
 
-const Alert = ({ error }: ErrorProps) => {
+const Alert: React.FC<ErrorProps> = ({ error }) => {
   return (
     <div
       className="terminal-alert terminal-alert-error"
