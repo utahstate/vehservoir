@@ -1,8 +1,8 @@
 import { Body, Controller, Post, Request, UseGuards } from '@nestjs/common';
 import { AdminCreationDto } from 'dto/auth/AdminCreation';
 import { LocalAuthGuard } from 'src/auth/local_auth';
-import { AdminService } from 'src/services/admin';
 import { Admin } from 'src/entities/admin';
+import { AdminService } from 'src/services/admin';
 
 @Controller()
 export class AdminController {
@@ -18,6 +18,6 @@ export class AdminController {
   @UseGuards(LocalAuthGuard)
   @Post('/api/admin/login')
   async login(@Request() req: any) {
-    return req.user;
+    return await this.adminService.login(req.user);
   }
 }
