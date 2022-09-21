@@ -12,10 +12,7 @@ import {
 } from '@nestjs/common';
 import { VehicleType } from 'src/entities/vehicle_type';
 import { Vehicle } from 'src/entities/vehicle';
-import {
-  VehicleAvailability,
-  VehicleService,
-} from 'src/providers/services/vehicle';
+import { VehicleAvailability, VehicleService } from 'src/services/vehicle';
 import { VehicleCreationDto } from 'dto/vehicles/Creation';
 import { Free } from 'dto/vehicles/Free';
 import { DeleteResult } from 'typeorm';

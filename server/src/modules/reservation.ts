@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ReservationController } from 'src/controllers/reservation';
 import { Reservation } from 'src/entities/reservation';
-import { ReservationService } from 'src/providers/services/reservation';
+import { ReservationService } from 'src/services/reservation';
 import { VehicleModule } from './vehicle';
 
 @Module({

@@ -24,7 +24,7 @@ export class ReservationService {
     });
   }
 
-  async findOne(options: Record<string, any>): Promise<Reservation | null> {
+  async findOne(options: Record<string, any>): Promise<Reservation> {
     return this.reservationRepo.findOne({
       where: options,
     });

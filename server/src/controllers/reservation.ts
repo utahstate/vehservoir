@@ -9,11 +9,11 @@ import {
   Patch,
   Post,
 } from '@nestjs/common';
-import { ReservationService } from 'src/providers/services/reservation';
+import { ReservationService } from 'src/services/reservation';
 import { Reservation } from 'src/entities/reservation';
 import { ReservationDto } from 'dto/reservations/Creation';
 import { DeleteResult } from 'typeorm';
-import { VehicleService } from 'src/providers/services/vehicle';
+import { VehicleService } from 'src/services/vehicle';
 import { Vehicle } from 'src/entities/vehicle';
 
 @Controller()
