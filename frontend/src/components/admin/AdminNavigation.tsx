@@ -18,10 +18,18 @@ const navItems = [
 ];
 
 const AdminNavigation: React.FC = (): JSX.Element => {
-  const { setAuthToken } = useAuthContext();
+  const { setSignedIn } = useAuthContext();
   const handleLogout = (e: React.SyntheticEvent): void => {
     e.preventDefault();
-    setAuthToken(null);
+
+    fetch('/api/admin/logout', {
+      method: 'GET',
+      credentials: 'include',
+    }).then((x) => {
+      if (x.ok) {
+        setSignedIn(false);
+      }
+    });
   };
 
   return (

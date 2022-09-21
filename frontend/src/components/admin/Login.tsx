@@ -4,7 +4,7 @@ import { useAuthContext } from '../../context/AuthContext';
 import Alert from '../../components/Alert';
 
 const Login: React.FC = (): JSX.Element => {
-  const { setAuthToken } = useAuthContext();
+  const { setSignedIn } = useAuthContext();
   const [username, setUsername] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [error, setError] = useState<boolean>(false);
@@ -25,7 +25,7 @@ const Login: React.FC = (): JSX.Element => {
     })
       .then((res) => res.json())
       .then((data) => {
-        setAuthToken(data.access_token);
+        setSignedIn(!data.error);
         nav('/admin');
       })
       .catch(() => {

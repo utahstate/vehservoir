@@ -4,7 +4,10 @@ import { Link } from 'react-router-dom';
 const Vehicles = () => {
   const [vehicles, setVehicles] = useState([]);
 
-  fetch('/api/vehicles')
+  fetch('/api/vehicles', {
+    method: 'GET',
+    credentials: 'include',
+  })
     .then((vehicleJsonCollection) => vehicleJsonCollection.json())
     .then((vehicles) => setVehicles(vehicles));
 

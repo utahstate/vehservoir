@@ -5,14 +5,13 @@ import { Admin } from 'src/entities/admin';
 import { AdminService } from 'src/services/admin';
 
 @Injectable()
-export class LocalAdminStrategy extends PassportStrategy(Strategy) {
+export class LocalStrategy extends PassportStrategy(Strategy) {
   constructor(private adminService: AdminService) {
     super();
   }
 
   async validate(username: string, password: string): Promise<Admin> {
     const admin = await this.adminService.validateAdmin(username, password);
-    console.log(admin);
     if (!admin) {
       throw new UnauthorizedException('Invalid Credentials');
     }

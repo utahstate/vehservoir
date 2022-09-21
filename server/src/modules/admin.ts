@@ -5,8 +5,9 @@ import { Admin } from 'src/entities/admin';
 import { AdminService } from 'src/services/admin';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
-import { LocalAdminStrategy } from 'src/auth/local_strategy';
+import { LocalStrategy } from 'src/auth/local_strategy';
 import { ConfigService } from '@nestjs/config';
+import { JwtStrategy } from 'src/auth/jwt_strategy';
 
 @Module({
   imports: [
@@ -20,7 +21,7 @@ import { ConfigService } from '@nestjs/config';
       }),
     }),
   ],
-  providers: [AdminService, LocalAdminStrategy],
+  providers: [AdminService, LocalStrategy, JwtStrategy],
   controllers: [AdminController],
 })
 export class AdminModule {}
