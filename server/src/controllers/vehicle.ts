@@ -9,6 +9,7 @@ import {
   Patch,
   Post,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { VehicleType } from 'src/entities/vehicle_type';
 import { Vehicle } from 'src/entities/vehicle';
@@ -16,6 +17,7 @@ import { VehicleAvailability, VehicleService } from 'src/services/vehicle';
 import { VehicleCreationDto } from 'dto/vehicles/Creation';
 import { Free } from 'dto/vehicles/Free';
 import { DeleteResult } from 'typeorm';
+import { JwtAuthGuard } from 'src/auth/jwt_auth';
 
 @Controller()
 export class VehicleController {
@@ -45,6 +47,7 @@ export class VehicleController {
     return vehicle;
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post('/api/vehicles')
   async createVehicle(
     @Body() vehiclePayload: VehicleCreationDto,
