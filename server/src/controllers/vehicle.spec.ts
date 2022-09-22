@@ -4,7 +4,7 @@ import { VehicleType } from 'src/entities/vehicle_type';
 import { VehicleAvailability, VehicleService } from 'src/services/vehicle';
 import { VehicleController } from './vehicle';
 import { VehicleCreationDto } from 'dto/vehicles/Creation';
-import { HttpException } from '@nestjs/common';
+import { HttpException, NotFoundException } from '@nestjs/common';
 
 // Firstly mock the VehicleService database wrapper and create dummy data
 let vehicleTypeGlobalId = 0;
@@ -82,13 +82,17 @@ const vehicleServiceMocks = {
         (options.type && vehicleTypeEquality(options.type, vehicle.type)),
     ),
   save: async (vehicle: Vehicle): Promise<Vehicle> => {
+    let result: Vehicle;
     if (vehicle.id && vehicle.id < vehicleGlobalId) {
-      vehicles[vehicles.findIndex((v) => v.id === vehicle.id)] = vehicle;
+      const foundIndex = vehicles.findIndex((v) => v.id === vehicle.id);
+      vehicles[foundIndex] = { ...vehicles[foundIndex], ...vehicle };
+      result = vehicles[foundIndex];
     } else {
       vehicle.id = ++vehicleGlobalId;
       vehicles.push(vehicle);
+      result = vehicle;
     }
-    return vehicle;
+    return result;
   },
   saveType: async (vehicleType: VehicleType): Promise<VehicleType> => {
     vehicleType.id = ++vehicleTypeGlobalId;
@@ -112,6 +116,21 @@ const vehicleServiceMocks = {
       (type) => !vehicleTypeEquality(type, vehicleType),
     );
     return vehicleTypes;
+  },
+  findOrCreateTypeName: async (
+    name: string,
+    createIfNotFound: boolean,
+  ): Promise<VehicleType> => {
+    const vehicleType = await vehicleServiceMocks.findTypeBy({
+      name: name,
+    });
+
+    if (!vehicleType && createIfNotFound) {
+      const newVehicleType = new VehicleType();
+      newVehicleType.name = name;
+      return await vehicleServiceMocks.saveType(newVehicleType);
+    }
+    return vehicleType;
   },
   vehicleFreePeriodsBy: async (
     _options: Record<string, any>,
@@ -294,6 +313,56 @@ describe('VehicleController', () => {
           name: 'Submarine',
         },
       });
+    });
+  });
+
+  describe('put', () => {
+    it('should update all fields on a vehicle', async () => {
+      const vehicle = await vehicleController.getVehicle(1);
+
+      await vehicleController.updateVehicle(1, {
+        type: {
+          name: 'bike',
+          new: true,
+        },
+        name: 'Bicycle 1',
+      });
+
+      expect(vehicle).toEqual({
+        id: vehicle.id,
+        name: 'Bicycle 1',
+        type: {
+          id: vehicleTypeGlobalId,
+          name: 'bike',
+        },
+      });
+    });
+
+    it('should update partial fields on a vehicle', async () => {
+      const vehicle = await vehicleController.getVehicle(1);
+
+      await vehicleController.updateVehicle(1, {
+        name: 'Bicycle 2',
+      });
+
+      expect(vehicle).toEqual({
+        id: vehicle.id,
+        name: 'Bicycle 2',
+        type: {
+          id: vehicleTypeGlobalId,
+          name: 'bike',
+        },
+      });
+    });
+
+    it('should fail to update non existing vehicles', async () => {
+      try {
+        await vehicleController.updateVehicle(999, {
+          name: 'Bicycle 2',
+        });
+      } catch (e) {
+        expect(e).toBeInstanceOf(HttpException);
+      }
     });
   });
 
