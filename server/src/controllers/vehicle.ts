@@ -38,6 +38,11 @@ export class VehicleController {
     return await this.vehicleService.allVehicles();
   }
 
+  @Get('/api/vehicles/types')
+  async types(): Promise<VehicleType[]> {
+    return await this.vehicleService.allVehicleTypes();
+  }
+
   @Get('/api/vehicle/:id')
   async getVehicle(@Param('id') id: number): Promise<Vehicle> {
     const vehicle = await this.vehicleService.findVehicleBy({ id });
@@ -74,6 +79,7 @@ export class VehicleController {
     return await this.vehicleService.save(newVehicle);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Patch('/api/vehicle/:id')
   async updateVehicle(
     @Param('id') id: number,
@@ -93,6 +99,7 @@ export class VehicleController {
     return await this.vehicleService.save(vehicle);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Delete('/api/vehicles/:type')
   async removeVehiclesOfTypeAndType(
     @Param('type') name: string,
@@ -104,6 +111,7 @@ export class VehicleController {
     return await this.vehicleService.removeVehiclesOfTypeAndType(vehicleType);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Delete('/api/vehicles/:id')
   async removeVehicle(@Param('id') id: number): Promise<DeleteResult> {
     const vehicle = await this.vehicleService.findVehicleBy({ id });
