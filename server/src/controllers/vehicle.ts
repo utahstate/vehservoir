@@ -52,50 +52,52 @@ export class VehicleController {
     return vehicle;
   }
 
+  private async getOrCreateTypeFromBodyOrFail(
+    vehiclePayload: Partial<VehicleCreationDto>,
+  ): Promise<VehicleType> {
+    const type = await this.vehicleService.findOrCreateTypeName(
+      vehiclePayload.type.name,
+      vehiclePayload.type.new,
+    );
+    if (!type) {
+      throw new HttpException(
+        `Vehicle type ${vehiclePayload.type.name} cannot be found (create it with new: true).`,
+        HttpStatus.NOT_FOUND,
+      );
+    }
+    return type;
+  }
+
   @UseGuards(JwtAuthGuard)
   @Post('/api/vehicles')
   async createVehicle(
     @Body() vehiclePayload: VehicleCreationDto,
   ): Promise<Vehicle> {
-    let vehicleType = await this.vehicleService.findTypeBy({
-      name: vehiclePayload.type.name,
-    });
+    const vehicle = new Vehicle();
+    vehicle.name = vehiclePayload.name;
+    vehicle.type = await this.getOrCreateTypeFromBodyOrFail(vehiclePayload);
 
-    if (!vehicleType && vehiclePayload.type.new) {
-      const newVehicleType = new VehicleType();
-      newVehicleType.name = vehiclePayload.type.name;
-      vehicleType = await this.vehicleService.saveType(newVehicleType);
-    } else if (!vehicleType) {
-      throw new HttpException(
-        `Vehicle type ${vehiclePayload.type.name} cannot be found - please create it.`,
-        HttpStatus.NOT_FOUND,
-      );
-    }
-
-    const newVehicle = new Vehicle();
-    newVehicle.name = vehiclePayload.name;
-    newVehicle.type = vehicleType;
-
-    return await this.vehicleService.save(newVehicle);
+    return await this.vehicleService.save(vehicle);
   }
 
   @UseGuards(JwtAuthGuard)
   @Patch('/api/vehicle/:id')
   async updateVehicle(
     @Param('id') id: number,
-    @Body() vehiclePayload: { name: string },
+    @Body() vehiclePayload: Partial<VehicleCreationDto>,
   ): Promise<Vehicle> {
     const vehicle = await this.vehicleService.findVehicleBy({ id });
     if (!vehicle) {
       throw new HttpException('Vehicle not found', HttpStatus.NOT_FOUND);
     }
-    if (!vehiclePayload.name) {
-      throw new HttpException(
-        'Only vehicle name can be updated',
-        HttpStatus.BAD_REQUEST,
-      );
+
+    if (vehicle.name) {
+      vehicle.name = vehiclePayload.name;
     }
-    vehicle.name = vehiclePayload.name;
+    if (vehiclePayload.type) {
+      vehicle.type = await this.getOrCreateTypeFromBodyOrFail(vehiclePayload);
+    }
+
     return await this.vehicleService.save(vehicle);
   }
 

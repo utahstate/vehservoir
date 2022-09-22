@@ -38,12 +38,28 @@ export class VehicleService {
     });
   }
 
-  async findVehicleBy(options: Record<string, any>): Promise<Vehicle | null> {
+  async findVehicleBy(options: Record<string, any>): Promise<Vehicle> {
     return this.vehicleRepo.findOne({ where: options });
   }
 
-  async findTypeBy(options: Record<string, any>): Promise<VehicleType | null> {
+  async findTypeBy(options: Record<string, any>): Promise<VehicleType> {
     return this.vehicleTypeRepo.findOne({ where: options });
+  }
+
+  async findOrCreateTypeName(
+    name: string,
+    createIfNotFound: boolean,
+  ): Promise<VehicleType> {
+    const vehicleType = await this.findTypeBy({
+      name: name,
+    });
+
+    if (!vehicleType && createIfNotFound) {
+      const newVehicleType = new VehicleType();
+      newVehicleType.name = name;
+      return await this.saveType(newVehicleType);
+    }
+    return vehicleType;
   }
 
   async remove(vehicle: Vehicle): Promise<DeleteResult> {
