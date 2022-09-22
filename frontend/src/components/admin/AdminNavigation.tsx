@@ -2,33 +2,17 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthContext } from '../../context/AuthContext';
 
-const navItems = [
-  {
-    name: 'Vehicles',
-    route: '/admin/vehicles',
-  },
-  {
-    name: 'Reservations',
-    route: '/admin/reservations',
-  },
-  {
-    name: 'Admins',
-    route: '/admin/admins',
-  },
-];
-
 const AdminNavigation: React.FC = (): JSX.Element => {
-  const { setSignedIn } = useAuthContext();
+  const { signedIn, setSignedIn, setSessionOver } = useAuthContext();
   const handleLogout = (e: React.SyntheticEvent): void => {
     e.preventDefault();
 
     fetch('/api/admin/logout', {
       method: 'GET',
-      credentials: 'include',
-    }).then((x) => {
-      if (x.ok) {
-        setSignedIn(false);
-      }
+      credentials: 'same-origin',
+    }).then(() => {
+      setSignedIn(false);
+      setSessionOver(new Date());
     });
   };
 
@@ -38,22 +22,35 @@ const AdminNavigation: React.FC = (): JSX.Element => {
         <div className="terminal-nav">
           <div className="terminal-logo">
             <div className="logo terminal-prompt">
-              <Link to="/admin" className="no-style">
+              <Link to="/" className="no-style">
                 Vehservoir
               </Link>
             </div>
           </div>
           <nav className="terminal-menu">
             <ul>
-              {navItems.map(({ name, route }) => (
-                <li className="menu-item" key={name}>
-                  <Link to={route}>{name}</Link>
+              <li className="menu-item">
+                <Link to="/vehicles">Vehicles</Link>
+              </li>
+              <li className="menu-item">
+                <Link to="/reservations">Reservations</Link>
+              </li>
+
+              {signedIn ? (
+                <li className="menu-item">
+                  <Link to="/admins">Admins</Link>
                 </li>
-              ))}
+              ) : null}
               <li>
-                <a className="btn btn-primary" onClick={handleLogout}>
-                  Logout
-                </a>
+                {signedIn ? (
+                  <a className="btn btn-primary" onClick={handleLogout}>
+                    Logout
+                  </a>
+                ) : (
+                  <Link className="btn btn-primary" to="/login">
+                    Login
+                  </Link>
+                )}
               </li>
             </ul>
           </nav>

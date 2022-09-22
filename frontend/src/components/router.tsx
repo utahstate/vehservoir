@@ -12,13 +12,11 @@ export const Router: React.FC = (): JSX.Element => {
   return (
     <Routes>
       <Route
-        path="/"
-        element={signedIn ? <Navigate replace to="/admin" /> : <Login />}
+        path="/login"
+        element={signedIn ? <Navigate replace to="/" /> : <Login />}
       ></Route>
-      <Route
-        path="/admin"
-        element={signedIn ? <Dashboard /> : <Navigate replace to="/" />}
-      >
+
+      <Route path="/" element={<Dashboard />}>
         <Route path="vehicles" element={<Vehicles />} />
         <Route path="admins" element={<Admins />} />
       </Route>

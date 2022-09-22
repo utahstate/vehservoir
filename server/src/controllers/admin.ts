@@ -28,12 +28,19 @@ export class AdminController {
   @UseGuards(LocalAuthGuard)
   @Post('/api/admin/login')
   async login(@Res({ passthrough: true }) res: any, @Request() req: any) {
+    const twelveHours = 12 * (60 * 60 * 1000);
+
     const token = await this.adminService.login(req.user);
     res.cookie('jwt', token.access_token, {
       httpOnly: true,
       sameSite: 'strict',
+      maxAge: twelveHours,
     });
-    return { message: 'Login successful' };
+
+    return {
+      message: 'Login successful',
+      expiration: new Date(new Date().getTime() + twelveHours),
+    };
   }
 
   @Get('/api/admin/logout')
@@ -45,6 +52,6 @@ export class AdminController {
   @UseGuards(JwtAuthGuard)
   @Get('/api/admin/profile')
   getProfile(@Request() req: any) {
-    return req.user;
+    return { username: req.user.username, id: req.user.sub };
   }
 }

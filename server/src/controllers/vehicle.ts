@@ -9,6 +9,7 @@ import {
   Patch,
   Post,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { VehicleType } from 'src/entities/vehicle_type';
 import { Vehicle } from 'src/entities/vehicle';
@@ -16,6 +17,7 @@ import { VehicleAvailability, VehicleService } from 'src/services/vehicle';
 import { VehicleCreationDto } from 'dto/vehicles/Creation';
 import { Free } from 'dto/vehicles/Free';
 import { DeleteResult } from 'typeorm';
+import { JwtAuthGuard } from 'src/auth/jwt_auth';
 
 @Controller()
 export class VehicleController {
@@ -36,6 +38,11 @@ export class VehicleController {
     return await this.vehicleService.allVehicles();
   }
 
+  @Get('/api/vehicles/types')
+  async types(): Promise<VehicleType[]> {
+    return await this.vehicleService.allVehicleTypes();
+  }
+
   @Get('/api/vehicle/:id')
   async getVehicle(@Param('id') id: number): Promise<Vehicle> {
     const vehicle = await this.vehicleService.findVehicleBy({ id });
@@ -45,6 +52,7 @@ export class VehicleController {
     return vehicle;
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post('/api/vehicles')
   async createVehicle(
     @Body() vehiclePayload: VehicleCreationDto,
@@ -71,6 +79,7 @@ export class VehicleController {
     return await this.vehicleService.save(newVehicle);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Patch('/api/vehicle/:id')
   async updateVehicle(
     @Param('id') id: number,
@@ -90,6 +99,7 @@ export class VehicleController {
     return await this.vehicleService.save(vehicle);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Delete('/api/vehicles/:type')
   async removeVehiclesOfTypeAndType(
     @Param('type') name: string,
@@ -101,6 +111,7 @@ export class VehicleController {
     return await this.vehicleService.removeVehiclesOfTypeAndType(vehicleType);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Delete('/api/vehicles/:id')
   async removeVehicle(@Param('id') id: number): Promise<DeleteResult> {
     const vehicle = await this.vehicleService.findVehicleBy({ id });
