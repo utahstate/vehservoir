@@ -69,7 +69,7 @@ export class VehicleController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Post('/api/vehicles')
+  @Post('/api/vehicle')
   async createVehicle(
     @Body() vehiclePayload: VehicleCreationDto,
   ): Promise<Vehicle> {
@@ -102,7 +102,7 @@ export class VehicleController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Delete('/api/vehicles/:type')
+  @Delete('/api/vehicles/type/:type')
   async removeVehiclesOfTypeAndType(
     @Param('type') name: string,
   ): Promise<DeleteResult> {
@@ -114,7 +114,7 @@ export class VehicleController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Delete('/api/vehicles/:id')
+  @Delete('/api/vehicle/:id')
   async removeVehicle(@Param('id') id: number): Promise<DeleteResult> {
     const vehicle = await this.vehicleService.findVehicleBy({ id });
     if (!vehicle) {
