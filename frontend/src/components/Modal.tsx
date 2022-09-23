@@ -1,12 +1,11 @@
-import React, { Dispatch, FC, ReactNode, SetStateAction } from 'react';
+import React, { FC, ReactNode } from 'react';
 
 interface Props {
   title?: string;
   content?: ReactNode;
-  setModalIsOpen: Dispatch<SetStateAction<boolean>>;
 }
 
-const Modal: FC<Props> = ({ title, content, setModalIsOpen }) => {
+const Modal: FC<Props> = ({ title, content }) => {
   return (
     <div
       style={{
@@ -17,14 +16,17 @@ const Modal: FC<Props> = ({ title, content, setModalIsOpen }) => {
         height: '100vh',
         backdropFilter: 'brightness(40%) blur(2px)',
         display: 'grid',
-        border: '1px solid #000',
         placeItems: 'center',
         zIndex: 100,
       }}
     >
       <div
         className="container"
-        style={{ backgroundColor: '#fff', padding: 20 }}
+        style={{
+          backgroundColor: '#fff',
+          padding: 20,
+          border: '1px solid #000',
+        }}
       >
         <div className="card-header">{title || null}</div>
         {content}

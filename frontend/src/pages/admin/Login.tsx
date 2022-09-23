@@ -1,10 +1,10 @@
-import React, { FC, useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '../../context/AuthContext';
 import Alert from '../../components/Alert';
 
-const Login: FC = (): JSX.Element => {
-  const { setSignedIn, setSessionOver } = useAuthContext();
+const Login: React.FC = (): JSX.Element => {
+  const { setSignedIn } = useAuthContext();
   const [username, setUsername] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [error, setError] = useState<boolean>(false);
@@ -25,16 +25,7 @@ const Login: FC = (): JSX.Element => {
     })
       .then((res) => res.json())
       .then((data) => {
-        if (data.error) {
-          setError(true);
-          return;
-        }
-
-        setSignedIn(true);
-
-        const expiry = new Date(data.expiration);
-        setSessionOver(expiry);
-
+        setSignedIn(!data.error);
         nav('/');
       })
       .catch(() => {
