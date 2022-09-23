@@ -11,7 +11,11 @@ export class ReservationService {
   ) {}
 
   async allReservations(): Promise<Reservation[]> {
-    return this.reservationRepo.find();
+    return this.reservationRepo.find({
+      order: {
+        id: 'desc',
+      },
+    });
   }
 
   async findReservationsBy(
@@ -21,6 +25,9 @@ export class ReservationService {
     return this.reservationRepo.find({
       relations,
       where: options,
+      order: {
+        id: 'desc',
+      },
     });
   }
 

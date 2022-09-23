@@ -21,11 +21,16 @@ export class VehicleService {
   ) {}
 
   async allVehicles(): Promise<Vehicle[]> {
-    return this.vehicleRepo.find({ relations: { type: true } });
+    return this.vehicleRepo.find({
+      relations: { type: true },
+      order: {
+        id: 'desc',
+      },
+    });
   }
 
   async allVehicleTypes(): Promise<VehicleType[]> {
-    return this.vehicleTypeRepo.find();
+    return this.vehicleTypeRepo.find({ order: { id: 'desc' } });
   }
 
   async findVehiclesBy(
@@ -35,6 +40,9 @@ export class VehicleService {
     return this.vehicleRepo.find({
       relations,
       where: options,
+      order: {
+        id: 'desc',
+      },
     });
   }
 
