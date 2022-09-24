@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 // VEHSERVOIR MODULES
 import { VehicleModule } from './vehicle';
+import { SlackModule } from './slack';
 import { ReservationModule } from './reservation';
 import { AdminModule } from './admin';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -28,6 +29,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
     }),
     VehicleModule,
     ReservationModule,
+    SlackModule,
     AdminModule,
   ],
   controllers: [AppController],
