@@ -1,14 +1,19 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { Dispatch, FC, SetStateAction, useState } from 'react';
 import { useAuthContext } from '../../context/AuthContext';
-import Alert from '../../components/Alert';
+import Alert from '../common/Alert';
+import Modal from '../common/Modal';
 
-const Login: React.FC = (): JSX.Element => {
-  const { setSignedIn } = useAuthContext();
+export interface LoginModalProps {
+  setLoginModalIsOpen: Dispatch<SetStateAction<boolean>>;
+}
+
+const LoginModal: FC<LoginModalProps> = ({
+  setLoginModalIsOpen,
+}): JSX.Element => {
+  const { setSignedIn, setSessionOver } = useAuthContext();
   const [username, setUsername] = useState<string>('');
   const [password, setPassword] = useState<string>('');
-  const [error, setError] = useState<boolean>(false);
-  const nav = useNavigate();
+  const [error, setError] = useState<string>('');
 
   const handleSubmit = (e: React.SyntheticEvent): void => {
     e.preventDefault();
@@ -25,18 +30,25 @@ const Login: React.FC = (): JSX.Element => {
     })
       .then((res) => res.json())
       .then((data) => {
-        setSignedIn(!data.error);
-        nav('/');
+        if (!data.expiration) {
+          setError(data.message);
+          return;
+        }
+
+        setSignedIn(true);
+
+        setSessionOver(new Date(data.expiration));
+        setLoginModalIsOpen(false);
       })
-      .catch(() => {
-        setError(true);
+      .catch((e) => {
+        setError(e);
       });
   };
 
   return (
-    <>
-      <div className="container" style={{ marginTop: 100 }}>
-        {error && <Alert error="Could not login with credentials" />}
+    <Modal>
+      <>
+        {error && <Alert error={error} />}
         <form onSubmit={handleSubmit}>
           <fieldset>
             <legend>Vehservoir Admin Login</legend>
@@ -60,18 +72,27 @@ const Login: React.FC = (): JSX.Element => {
             </div>
             <button
               id="submit"
-              className="btn btn-default"
+              className="btn btn-primary"
               type="submit"
               role="button"
               name="submit"
+              style={{ marginRight: '1rem' }}
             >
               Login
             </button>
+
+            <button
+              onClick={() => setLoginModalIsOpen(false)}
+              className="btn btn-error"
+              role="button"
+            >
+              Cancel
+            </button>
           </fieldset>
         </form>
-      </div>
-    </>
+      </>
+    </Modal>
   );
 };
 
-export default Login;
+export default LoginModal;

@@ -1,12 +1,26 @@
-import { IsObject, IsString } from 'class-validator';
+import { Type } from 'class-transformer';
+import {
+  IsBoolean,
+  IsNotEmpty,
+  IsString,
+  ValidateNested,
+} from 'class-validator';
 
-export class VehicleCreationDto {
+class VehicleTypeSpecificationDto {
+  @IsNotEmpty()
   @IsString()
   name: string;
 
-  @IsObject()
-  type: {
-    name: string;
-    new: boolean;
-  };
+  @IsBoolean()
+  new: boolean;
+}
+
+export class VehicleCreationDto {
+  @IsString()
+  @IsNotEmpty()
+  name: string;
+
+  @ValidateNested()
+  @Type(() => VehicleCreationDto)
+  type: VehicleTypeSpecificationDto;
 }

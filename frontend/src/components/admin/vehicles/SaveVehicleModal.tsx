@@ -1,17 +1,19 @@
 import React, { FC, useEffect, useState } from 'react';
 import { toTitleCase } from '../../../pages/admin/Vehicles';
-import Modal from '../../Modal';
+import Modal from '../../common/Modal';
 import { VehicleModalProps } from './vehicleData';
+import Alert from '../../common/Alert';
 
 const SaveVehicleModal: FC<VehicleModalProps> = ({
   title,
-  onSubmit,
+  onSubmitAndStatus,
   currentVehicleData,
   setCurrentVehicleData,
   setIsOpen,
 }) => {
   const [vehicleTypes, setVehicleTypes] = useState([]);
-  const [isNewVehicle, setIsNewVehicle] = useState(false);
+  const [isNewVehicleType, setIsNewVehicleType] = useState<boolean>(false);
+  const [error, setError] = useState<string>('');
 
   useEffect(() => {
     fetch('/api/vehicles/types', {
@@ -23,14 +25,25 @@ const SaveVehicleModal: FC<VehicleModalProps> = ({
   }, []);
 
   return (
-    <Modal
-      content={
+    <Modal>
+      <>
+        {error && <Alert error={error}></Alert>}
         <form
-          onSubmit={(e) => {
+          onSubmit={async (e) => {
             e.preventDefault();
             currentVehicleData.type.new = true;
-            onSubmit(currentVehicleData);
-            setIsOpen(false);
+
+            const submitResult = await onSubmitAndStatus(currentVehicleData);
+            if (submitResult.ok) {
+              return;
+            }
+
+            const submitResultMessage = (await submitResult.json()).message;
+            setError(
+              submitResultMessage && submitResultMessage.forEach
+                ? submitResultMessage.join(', ')
+                : submitResultMessage,
+            );
           }}
         >
           <fieldset>
@@ -56,13 +69,13 @@ const SaveVehicleModal: FC<VehicleModalProps> = ({
                 type="checkbox"
                 id="is-new"
                 name="is-new"
-                checked={isNewVehicle}
-                onChange={() => setIsNewVehicle(!isNewVehicle)}
+                checked={isNewVehicleType}
+                onChange={() => setIsNewVehicleType(!isNewVehicleType)}
               />
             </div>
             <div className="form-group">
               <label htmlFor="vehicle-select">Vehicle Type:</label>
-              {!isNewVehicle ? (
+              {!isNewVehicleType ? (
                 <select
                   id="vehicle-select"
                   name="vehicle-select"
@@ -70,7 +83,7 @@ const SaveVehicleModal: FC<VehicleModalProps> = ({
                   onChange={(e) =>
                     setCurrentVehicleData({
                       ...currentVehicleData,
-                      type: { name: toTitleCase(e.target.value) },
+                      type: { name: toTitleCase(e.target.value), new: false },
                     })
                   }
                   style={{
@@ -96,7 +109,7 @@ const SaveVehicleModal: FC<VehicleModalProps> = ({
                   onChange={(e) =>
                     setCurrentVehicleData({
                       ...currentVehicleData,
-                      type: { name: toTitleCase(e.target.value) },
+                      type: { name: toTitleCase(e.target.value), new: true },
                     })
                   }
                 />
@@ -118,8 +131,8 @@ const SaveVehicleModal: FC<VehicleModalProps> = ({
             </div>
           </fieldset>
         </form>
-      }
-    />
+      </>
+    </Modal>
   );
 };
 

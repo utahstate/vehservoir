@@ -1,11 +1,11 @@
-import React, { FC, ReactNode } from 'react';
+import React, { FC } from 'react';
 
 interface Props {
   title?: string;
-  content?: ReactNode;
+  children?: JSX.Element;
 }
 
-const Modal: FC<Props> = ({ title, content }) => {
+const Modal: FC<Props> = ({ title, children }) => {
   return (
     <div
       style={{
@@ -21,15 +21,16 @@ const Modal: FC<Props> = ({ title, content }) => {
       }}
     >
       <div
-        className="container"
         style={{
           backgroundColor: '#fff',
           padding: 20,
           border: '1px solid #000',
+          width: '80%',
+          maxWidth: 600,
         }}
       >
         <div className="card-header">{title || null}</div>
-        {content}
+        {children}
       </div>
     </div>
   );

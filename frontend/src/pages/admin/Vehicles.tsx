@@ -2,6 +2,7 @@ import React, { FC, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import DeleteVehicleModal from '../../components/admin/vehicles/DeleteVehicleModal';
 import SaveVehicleModal from '../../components/admin/vehicles/SaveVehicleModal';
+import { useAuthContext } from '../../context/AuthContext';
 
 export interface CurrentVehicleData {
   id: number | null;
@@ -24,7 +25,7 @@ const actions: Record<string, (d: CurrentVehicleData) => Promise<any>> = {
   update: (currentVehicleData: CurrentVehicleData) => {
     const { id, ...dataToSend } = currentVehicleData;
 
-    return fetch(`/api/vehicle/${currentVehicleData.id}`, {
+    return fetch(`/api/vehicle/${id}`, {
       method: 'PATCH',
       headers: {
         'Content-type': 'application/json',
@@ -51,7 +52,7 @@ const actions: Record<string, (d: CurrentVehicleData) => Promise<any>> = {
   },
 };
 
-const getVehicles = () => {
+const getVehicles = async () => {
   return fetch('/api/vehicles', {
     method: 'GET',
     credentials: 'include',
@@ -59,6 +60,8 @@ const getVehicles = () => {
 };
 
 const Vehicles: FC = () => {
+  const { signedIn } = useAuthContext();
+
   const [selectedAction, setSelectedAction] = useState('');
   const [modalIsOpen, setModalIsOpen] = useState(false);
   const [vehicles, setVehicles] = useState<any[]>([]);
@@ -75,51 +78,54 @@ const Vehicles: FC = () => {
 
   useEffect(() => refreshVehicles(), []);
 
+  const modalProps = {
+    title: `${toTitleCase(selectedAction)} Vehicle`,
+    onSubmitAndStatus: async (
+      vehicleData: CurrentVehicleData,
+    ): Promise<Response> => {
+      const saveResult = await actions[selectedAction](vehicleData);
+      if (saveResult.ok) {
+        refreshVehicles();
+        setModalIsOpen(false);
+      }
+      return saveResult;
+    },
+    currentVehicleData: currentVehicleData,
+    setCurrentVehicleData: setCurrentVehicleData,
+    isOpen: modalIsOpen,
+    setIsOpen: setModalIsOpen,
+  };
   const modal =
     selectedAction === 'remove' ? (
-      <DeleteVehicleModal
-        title={`${toTitleCase(selectedAction)} Vehicle`}
-        onSubmit={(vehicleData: CurrentVehicleData) => {
-          actions[selectedAction](vehicleData).then(refreshVehicles);
-        }}
-        currentVehicleData={currentVehicleData}
-        setCurrentVehicleData={setCurrentVehicleData}
-        isOpen={modalIsOpen}
-        setIsOpen={setModalIsOpen}
-      />
+      <DeleteVehicleModal {...modalProps} />
     ) : (
-      <SaveVehicleModal
-        title={`${toTitleCase(selectedAction)} Vehicle`}
-        onSubmit={(vehicleData: CurrentVehicleData) => {
-          actions[selectedAction](vehicleData).then(refreshVehicles);
-        }}
-        currentVehicleData={currentVehicleData}
-        setCurrentVehicleData={setCurrentVehicleData}
-        isOpen={modalIsOpen}
-        setIsOpen={setModalIsOpen}
-      />
+      <SaveVehicleModal {...modalProps} />
     );
 
   return (
     <>
       <div className="container">
-        <h1>Manage Vehicles</h1>
-        <button
-          className="btn btn-default"
-          onClick={() => {
-            setSelectedAction('create');
-            setModalIsOpen(true);
-          }}
-        >
-          Create New Vehicle +
-        </button>
+        <h1>Vehicles</h1>
+        {signedIn ? (
+          <button
+            className="btn btn-default"
+            onClick={() => {
+              setSelectedAction('create');
+              setModalIsOpen(true);
+            }}
+          >
+            Create New Vehicle +
+          </button>
+        ) : (
+          <></>
+        )}
         <table>
           <thead>
             <tr>
               <th>ID</th>
               <th>Name</th>
               <th>Type</th>
-              <th>Actions</th>
+              {signedIn ? <th>Actions</th> : <></>}
             </tr>
           </thead>
           <tbody>
@@ -133,28 +139,38 @@ const Vehicles: FC = () => {
                   </td>
                   <td>{vehicle.name}</td>
                   <td>{vehicle.type.name}</td>
-                  <td>
-                    <span style={{ marginRight: 30 }}>
-                      <a
-                        onClick={() => {
-                          setSelectedAction('update');
-                          setCurrentVehicleData(vehicle);
-                          setModalIsOpen(!modalIsOpen);
+                  {signedIn ? (
+                    <td>
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'flex-start',
+                          gap: '1rem',
                         }}
                       >
-                        Edit
-                      </a>
-                    </span>
-                    <a
-                      onClick={() => {
-                        setSelectedAction('remove');
-                        setCurrentVehicleData(vehicle);
-                        setModalIsOpen(!modalIsOpen);
-                      }}
-                    >
-                      Delete
-                    </a>
-                  </td>
+                        <a
+                          onClick={() => {
+                            setSelectedAction('update');
+                            setCurrentVehicleData(vehicle);
+                            setModalIsOpen(!modalIsOpen);
+                          }}
+                        >
+                          Edit
+                        </a>
+                        <a
+                          onClick={() => {
+                            setSelectedAction('remove');
+                            setCurrentVehicleData(vehicle);
+                            setModalIsOpen(!modalIsOpen);
+                          }}
+                        >
+                          Delete
+                        </a>
+                      </div>
+                    </td>
+                  ) : (
+                    <></>
+                  )}
                 </tr>
               ))
             ) : (

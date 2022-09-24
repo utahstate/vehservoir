@@ -1,9 +1,13 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthContext } from '../../context/AuthContext';
+import LoginModal from './LoginModal';
 
 const AdminNavigation: React.FC = (): JSX.Element => {
   const { signedIn, setSignedIn, setSessionOver } = useAuthContext();
+  const [loginModalIsOpen, setLoginModalIsOpen] =
+    React.useState<boolean>(false);
+
   const handleLogout = (e: React.SyntheticEvent): void => {
     e.preventDefault();
 
@@ -47,15 +51,23 @@ const AdminNavigation: React.FC = (): JSX.Element => {
                     Logout
                   </a>
                 ) : (
-                  <Link className="btn btn-primary" to="/login">
+                  <a
+                    className="btn btn-primary"
+                    onClick={() => setLoginModalIsOpen(true)}
+                  >
                     Login
-                  </Link>
+                  </a>
                 )}
               </li>
             </ul>
           </nav>
         </div>
       </div>
+      {loginModalIsOpen ? (
+        <LoginModal setLoginModalIsOpen={setLoginModalIsOpen} />
+      ) : (
+        <></>
+      )}
     </section>
   );
 };
