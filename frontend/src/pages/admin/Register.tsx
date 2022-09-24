@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import Alert from '../Alert';
+import Alert from '../../components/common/Alert';
 import { useNavigate } from 'react-router-dom';
 
 const Register: React.FC = (): JSX.Element => {

@@ -24,7 +24,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     let expiry: string | null | Date = localStorage.getItem('expiry');
     if (expiry) {
       expiry = new Date(expiry);
-      if (new Date().getTime() < expiry.getTime()) {
+      if (Date.now() < expiry.getTime()) {
         setSignedIn(true);
         setSessionOver(expiry);
       }
@@ -35,7 +35,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     localStorage.setItem('expiry', sessionOver.toISOString());
     setTimeout(() => {
       setSessionOver((sessionOver) => {
-        if (new Date().getTime() >= sessionOver.getTime()) {
+        if (Date.now() >= sessionOver.getTime()) {
           setSignedIn((signedIn) => {
             if (signedIn) {
               alert(
