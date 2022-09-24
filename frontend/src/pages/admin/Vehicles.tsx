@@ -4,7 +4,7 @@ import DeleteVehicleModal from '../../components/admin/vehicles/DeleteVehicleMod
 import SaveVehicleModal from '../../components/admin/vehicles/SaveVehicleModal';
 import { useAuthContext } from '../../context/AuthContext';
 
-export interface CurrentVehicleData {
+export interface VehicleData {
   id: number | null;
   name: string;
   type: {
@@ -21,8 +21,8 @@ export const toTitleCase = (str: string) =>
     .map((x) => x[0]?.toUpperCase() + x.slice(1))
     .join(' ') + (str.endsWith(' ') ? ' ' : '');
 
-const actions: Record<string, (d: CurrentVehicleData) => Promise<any>> = {
-  update: (currentVehicleData: CurrentVehicleData) => {
+const actions: Record<string, (d: VehicleData) => Promise<Response>> = {
+  update: (currentVehicleData: VehicleData) => {
     const { id, ...dataToSend } = currentVehicleData;
 
     return fetch(`/api/vehicle/${id}`, {
@@ -33,7 +33,8 @@ const actions: Record<string, (d: CurrentVehicleData) => Promise<any>> = {
       body: JSON.stringify(dataToSend),
     });
   },
-  create: (currentVehicleData: CurrentVehicleData) => {
+  create: (currentVehicleData: VehicleData) => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { id, ...dataToSend } = currentVehicleData;
 
     return fetch(`/api/vehicle`, {
@@ -45,7 +46,7 @@ const actions: Record<string, (d: CurrentVehicleData) => Promise<any>> = {
       body: JSON.stringify(dataToSend),
     });
   },
-  remove: (currentVehicleData: CurrentVehicleData) => {
+  remove: (currentVehicleData: VehicleData) => {
     return fetch(`/api/vehicle/${currentVehicleData.id}`, {
       method: 'DELETE',
     });
@@ -64,13 +65,12 @@ const Vehicles: FC = () => {
 
   const [selectedAction, setSelectedAction] = useState('');
   const [modalIsOpen, setModalIsOpen] = useState(false);
-  const [vehicles, setVehicles] = useState<any[]>([]);
-  const [currentVehicleData, setCurrentVehicleData] =
-    useState<CurrentVehicleData>({
-      id: null,
-      name: '',
-      type: { name: '', new: true },
-    });
+  const [vehicles, setVehicles] = useState<VehicleData[]>([]);
+  const [currentVehicleData, setCurrentVehicleData] = useState<VehicleData>({
+    id: null,
+    name: '',
+    type: { name: '', new: true },
+  });
 
   const refreshVehicles = (): void => {
     getVehicles().then((vehicles) => setVehicles(vehicles));
@@ -80,9 +80,7 @@ const Vehicles: FC = () => {
 
   const modalProps = {
     title: `${toTitleCase(selectedAction)} Vehicle`,
-    onSubmitAndStatus: async (
-      vehicleData: CurrentVehicleData,
-    ): Promise<Response> => {
+    onSubmitAndStatus: async (vehicleData: VehicleData): Promise<Response> => {
       const saveResult = await actions[selectedAction](vehicleData);
       if (saveResult.ok) {
         refreshVehicles();
