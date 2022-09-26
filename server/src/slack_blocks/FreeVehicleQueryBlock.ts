@@ -1,4 +1,10 @@
-import { Modal, Blocks, Elements, Bits } from 'slack-block-builder';
+import {
+  Modal,
+  Blocks,
+  Elements,
+  Bits,
+  setIfTruthy,
+} from 'slack-block-builder';
 import { VehicleType } from 'src/entities/vehicle_type';
 
 const DEFAULT_RESERVATION_PERIOD_HRS = 2;
@@ -13,12 +19,12 @@ const clockString = (hours: number, minutes: number) =>
 interface FreeVehicleQueryBlocksProps {
   vehicleTypes: VehicleType[];
   error?: string;
-  vehicleType?: { value: string; text: string };
   startDate?: string;
   endDate?: string;
   startTime?: string;
   endTime?: string;
-  reservationPeriod?: string;
+  type?: { value: string; text: string };
+  reservationPeriod?: { value: string; text: string };
 }
 
 export const FreeVehicleQueryBlocks = (props: FreeVehicleQueryBlocksProps) =>
@@ -27,6 +33,11 @@ export const FreeVehicleQueryBlocks = (props: FreeVehicleQueryBlocksProps) =>
     submit: 'Find Available Vehicles',
   })
     .blocks(
+      props.error
+        ? Blocks.Section({
+            text: `⚠️ \`${props.error}\` ⚠️`,
+          })
+        : null,
       Blocks.Input({
         label: 'Vehicle Type',
         blockId: 'type',
@@ -34,14 +45,16 @@ export const FreeVehicleQueryBlocks = (props: FreeVehicleQueryBlocksProps) =>
         Elements.StaticSelect({
           placeholder: 'Choose a vehicle type...',
           actionId: 'type',
-        }).options(
-          props.vehicleTypes.map((type) =>
-            Bits.Option({
-              text: type.name,
-              value: type.id.toString(),
-            }),
-          ),
-        ),
+        })
+          .options(
+            props.vehicleTypes.map((type) =>
+              Bits.Option({
+                text: type.name,
+                value: type.id.toString(),
+              }),
+            ),
+          )
+          .initialOption(setIfTruthy(props.type, Bits.Option(props.type))),
       ),
       Blocks.Input({
         label: 'Available Start Date',
@@ -49,7 +62,8 @@ export const FreeVehicleQueryBlocks = (props: FreeVehicleQueryBlocksProps) =>
       }).element(
         Elements.DatePicker({
           actionId: 'startDate',
-          initialDate: new Date(),
+          initialDate:
+            (props.startDate && new Date(props.startDate)) || new Date(),
         }),
       ),
       Blocks.Input({
@@ -71,20 +85,17 @@ export const FreeVehicleQueryBlocks = (props: FreeVehicleQueryBlocksProps) =>
       }).element(
         Elements.DatePicker({
           actionId: 'endDate',
-          initialDate:
-            (props.endDate && new Date(props.endDate)) ||
-            ((date) =>
-              date.getHours() + DEFAULT_RESERVATION_PERIOD_HRS > 24
-                ? new Date(
-                    date.setDate(
-                      date.getDate() +
-                        Math.floor(
-                          (date.getHours() + DEFAULT_RESERVATION_PERIOD_HRS) /
-                            24,
-                        ),
-                    ),
-                  )
-                : date)(new Date()),
+          initialDate: ((date) =>
+            date.getHours() + DEFAULT_RESERVATION_PERIOD_HRS > 24
+              ? new Date(
+                  date.setDate(
+                    date.getDate() +
+                      Math.floor(
+                        (date.getHours() + DEFAULT_RESERVATION_PERIOD_HRS) / 24,
+                      ),
+                  ),
+                )
+              : date)(new Date()),
         }),
       ),
       Blocks.Input({
@@ -109,19 +120,21 @@ export const FreeVehicleQueryBlocks = (props: FreeVehicleQueryBlocksProps) =>
         Elements.StaticSelect({
           placeholder: 'Reservation length in hours...',
           actionId: 'reservationPeriod',
-        }).options(
-          DEFAULT_RESERVATION_PERIOD_LENGTH_HRS.map((periodLength) =>
-            Bits.Option({
-              text: periodLength,
-              value: periodLength,
-            }),
+        })
+          .options(
+            DEFAULT_RESERVATION_PERIOD_LENGTH_HRS.map((periodLength) =>
+              Bits.Option({
+                text: periodLength,
+                value: periodLength,
+              }),
+            ),
+          )
+          .initialOption(
+            setIfTruthy(
+              props.reservationPeriod,
+              Bits.Option(props.reservationPeriod),
+            ),
           ),
-        ),
       ),
-      props.error
-        ? Blocks.Section({
-            text: `⚠️ \`${props.error}\` ⚠️`,
-          })
-        : null,
     )
     .buildToJSON();
