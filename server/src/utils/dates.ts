@@ -47,3 +47,14 @@ export const subtractRanges = (
 
   return result;
 };
+
+export const applyTimezoneOffset = (date: Date, seconds: number) => {
+  return new Date(date.getTime() - seconds * 1000);
+};
+
+export const toTimeZone = (date: Date, timeZone: string) => {
+  return new Date(new Date(date).toLocaleString('en-US', { timeZone }));
+};
+
+export const clockString = (hours: number, minutes: number) =>
+  `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;

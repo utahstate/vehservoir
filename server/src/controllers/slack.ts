@@ -4,14 +4,11 @@ import { VehicleService } from 'src/services/vehicle';
 import axios from 'axios';
 import { ConfigService } from '@nestjs/config';
 import { v4 as uuidv4 } from 'uuid';
-import { FreeVehicleQueryBlocks } from 'src/slack_blocks/FreeVehicleQueryBlock';
-import { Blocks, Modal } from 'slack-block-builder';
-
-const applyTimezoneOffset = (date: Date, seconds: number) => {
-  const newDate = new Date(date);
-  newDate.setSeconds(newDate.getSeconds() + seconds);
-  return newDate;
-};
+import { FreeVehicleQueryBlocks } from 'src/slack_blocks/FreeVehicleQueryBlocks';
+import { Free } from 'dto/vehicles/Free';
+import { validateSync } from 'class-validator';
+import { applyTimezoneOffset, toTimeZone } from 'src/utils/dates';
+import { ReserveVehicleBlock } from 'src/slack_blocks/ReserveVehicleBlocks';
 
 interface ReservationFindAvailableViewState {
   type: {
@@ -37,7 +34,9 @@ export class SlackController {
     private configService: ConfigService,
   ) {}
 
-  private async getUserTimezoneOffset(user_id: string): Promise<number> {
+  private async getUserTimezoneDetails(
+    user_id: string,
+  ): Promise<{ offset: number; name: string }> {
     const response = await axios.get('https://slack.com/api/users.info', {
       params: {
         user: user_id,
@@ -46,83 +45,109 @@ export class SlackController {
         Authorization: `Bearer ${this.configService.get('SLACK_TOKEN')}`,
       },
     });
-    return response.data.user.tz_offset;
+    return {
+      offset: response.data.user.tz_offset,
+      name: response.data.user.tz,
+    };
   }
 
-  private updateView(view_id: string, view: any) {
-    return axios.post(
-      'https://slack.com/api/views.update',
-      {
-        view_id,
-        view,
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${this.configService.get('SLACK_TOKEN')}`,
-        },
-      },
-    );
-  }
-
-  private async dispatchReservationUpdate(bodyPayload: any) {
+  private async getReservableOrErrors(
+    bodyPayload: any,
+    userTimezoneOffset: number,
+  ) {
     const reservationValues = bodyPayload.view.state
       .values as ReservationFindAvailableViewState;
-    const userTimeZone = await this.getUserTimezoneOffset(bodyPayload.user.id);
     const startDate = applyTimezoneOffset(
       new Date(
         `${reservationValues.startDate.startDate.selected_date} ${reservationValues.startTime.startTime.selected_time}`,
       ),
-      userTimeZone,
+      userTimezoneOffset,
     );
     const endDate = applyTimezoneOffset(
       new Date(
         `${reservationValues.endDate.endDate.selected_date} ${reservationValues.endTime.endTime.selected_time}`,
       ),
-      userTimeZone,
+      userTimezoneOffset,
     );
 
-    const freeVehicles = await this.vehicleService.vehicleFreePeriodsBy(
-      {
-        type: parseInt(reservationValues.type.type.selected_option.value, 10),
-      },
+    const validateFreeBody = new Free(
+      reservationValues.type.type.selected_option.value,
+      parseFloat(
+        reservationValues.reservationPeriod.reservationPeriod.selected_option
+          .value,
+      ) *
+        60 *
+        60,
       startDate,
       endDate,
     );
-    console.log(freeVehicles);
 
-    await this.updateView(
-      bodyPayload.view.id,
-      FreeVehicleQueryBlocks({
-        vehicleTypes: await this.vehicleService.allVehicleTypes(),
-        error: 'Could not find any free vehicles',
-        startDate: reservationValues.startDate.startDate.selected_date,
-        endDate: reservationValues.endDate.endDate.selected_date,
-        startTime: reservationValues.startTime.startTime.selected_time,
-        endTime: reservationValues.endTime.endTime.selected_time,
-        type: reservationValues.type.type.selected_option,
-        reservationPeriod:
-          reservationValues.reservationPeriod.reservationPeriod.selected_option,
-      }),
+    const errors = validateSync(validateFreeBody).map((err) =>
+      Object.keys(err.constraints)
+        .map((constraint) => err.constraints[constraint])
+        .join(', '),
     );
+    if (startDate.getTime() < Date.now() - 5 * 60 * 1000) {
+      errors.push(
+        'Start time must be in the future or within the past 5 minutes',
+      );
+    }
+    if (errors.length) {
+      return { errors };
+    }
+
+    const vehicleAvailabilities =
+      await this.vehicleService.vehicleFreePeriodsBy(
+        {
+          type: parseInt(reservationValues.type.type.selected_option.value, 10),
+        },
+        startDate,
+        endDate,
+      );
+
+    if (!vehicleAvailabilities) {
+      return {
+        errors: [
+          'No available vehicles could be found. Decrease reservation length, change type, or increase available search period.',
+        ],
+      };
+    }
+
+    return {
+      vehicleAvailabilities,
+    };
   }
 
   @Post('/api/slack/interactions')
   async getInteraction(@Body() body: { payload: string }): Promise<any> {
     const bodyPayload = JSON.parse(body.payload);
+    const userTimezoneDetails = await this.getUserTimezoneDetails(
+      bodyPayload.user.id,
+    );
 
     if (bodyPayload.type === 'view_submission') {
-      this.dispatchReservationUpdate(bodyPayload);
+      const { errors, vehicleAvailabilities } =
+        await this.getReservableOrErrors(
+          bodyPayload,
+          userTimezoneDetails.offset,
+        );
+      if (errors) {
+        console.log(errors);
+        return {
+          response_action: 'update',
+          view: FreeVehicleQueryBlocks({
+            vehicleTypes: await this.vehicleService.allVehicleTypes(),
+            error: errors.map((x) => `* ${x}`).join('\n'),
+          }),
+        };
+      }
+      const view = ReserveVehicleBlock({
+        vehicleAvailabilities,
+        userTimezoneOffset: userTimezoneDetails.offset,
+      });
       return {
-        response_action: 'update',
-        view: Modal({
-          title: 'Processing',
-        })
-          .blocks(
-            Blocks.Section({
-              text: 'Processing your request...',
-            }),
-          )
-          .buildToJSON(),
+        response_action: 'push',
+        view,
       };
     }
     return { text: 'ok, got that' };
@@ -138,6 +163,10 @@ export class SlackController {
         callback_id,
         view: FreeVehicleQueryBlocks({
           vehicleTypes: await this.vehicleService.allVehicleTypes(),
+          userTimeNow: toTimeZone(
+            new Date(),
+            (await this.getUserTimezoneDetails(req.user_id)).name,
+          ),
         }),
       },
       {

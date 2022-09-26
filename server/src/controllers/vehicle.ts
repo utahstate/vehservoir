@@ -125,16 +125,6 @@ export class VehicleController {
 
   @Get('/api/vehicles/free')
   async free(@Query() query: Free): Promise<VehicleAvailability[]> {
-    if (
-      query.start.getTime() >= query.end.getTime() ||
-      query.period > (query.end.getTime() - query.start.getTime()) * 1000
-    ) {
-      throw new HttpException(
-        'Invalid query parameters: start must be before end, and period must be less than or equal to the difference between end and start.',
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-
     const vehicleType = await this.vehicleService.findTypeBy({
       name: query.type,
     });
