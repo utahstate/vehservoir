@@ -4,13 +4,27 @@ import { VehicleService } from 'src/services/vehicle';
 import axios from 'axios';
 import { ConfigService } from '@nestjs/config';
 import { v4 as uuidv4 } from 'uuid';
-import { Bits, Blocks, Elements, Modal } from 'slack-block-builder';
+import { FreeVehicleQueryBlocks } from 'src/slack_blocks/FreeVehicleQueryBlock';
 
-const DEFAULT_RESERVATION_PERIOD_HRS = 2;
-const DEFAULT_RESERVATION_PERIOD_LENGTH_HRS = Array(10)
-  .fill(0)
-  .map((_, i) => (i + 1) / 2)
-  .map((x) => x.toFixed(2)); // Values by half an hour between 0.5 and 5
+const applyTimezoneOffset = (date: Date, seconds: number) => {
+  const newDate = new Date(date);
+  newDate.setSeconds(newDate.getSeconds() + seconds);
+  return newDate;
+};
+
+interface ReservationFindAvailableViewState {
+  type: {
+    type: { type: string; selected_option: { text: string; value: string } };
+  };
+  startDate: { startDate: { type: string; selected_date: string } };
+  endDate: { endDate: { type: string; selected_date: string } };
+  startTime: { startTime: { type: string; selected_time: string } };
+  endTime: { endTime: { type: string; selected_time: string } };
+  reservationPeriod: {
+    type: string;
+    selected_option: { text: string; value: string };
+  };
+}
 
 @Controller()
 export class SlackController {
@@ -20,113 +34,71 @@ export class SlackController {
     private configService: ConfigService,
   ) {}
 
+  private async getUserTimezoneOffset(user_id: string): Promise<number> {
+    const response = await axios.get('https://slack.com/api/users.info', {
+      params: {
+        user: user_id,
+      },
+      headers: {
+        Authorization: `Bearer ${this.configService.get('SLACK_TOKEN')}`,
+      },
+    });
+    return response.data.user.tz_offset;
+  }
+
   @Post('/api/slack/interactions')
-  async getInteraction(@Body() req): Promise<string> {
-    console.log(JSON.parse(req.payload));
-    console.log(JSON.parse(req.payload).view.state);
-    return 'Please fill out the form';
+  async getInteraction(@Body() body: { payload: string }): Promise<any> {
+    const bodyPayload = JSON.parse(body.payload);
+    if (bodyPayload.type === 'view_submission') {
+      const reservationValues = bodyPayload.view.state
+        .values as ReservationFindAvailableViewState;
+      const userTimeZone = await this.getUserTimezoneOffset(
+        bodyPayload.user.id,
+      );
+      const startDate = applyTimezoneOffset(
+        new Date(
+          `${reservationValues.startDate.startDate.selected_date} ${reservationValues.startTime.startTime.selected_time}`,
+        ),
+        userTimeZone,
+      );
+      const endDate = applyTimezoneOffset(
+        new Date(
+          `${reservationValues.endDate.endDate.selected_date} ${reservationValues.endTime.endTime.selected_time}`,
+        ),
+        userTimeZone,
+      );
+
+      const freeVehicles = await this.vehicleService.vehicleFreePeriodsBy(
+        {
+          type: parseInt(reservationValues.type.type.selected_option.value, 10),
+        },
+        startDate,
+        endDate,
+      );
+      console.log(freeVehicles);
+
+      return {
+        response_action: 'update',
+        view: FreeVehicleQueryBlocks({
+          vehicleTypes: await this.vehicleService.allVehicleTypes(),
+          error: 'Could not find vehicle',
+        }),
+      };
+    }
   }
 
   @Post('/api/slack/reserve')
   async makeReserve(@Body() req): Promise<string> {
-    console.log(req);
     const callback_id = uuidv4();
     axios.post(
       'https://slack.com/api/views.open',
       {
         trigger_id: req.trigger_id,
         callback_id,
-        view: Modal({
-          title: 'Reserve Vehicle',
-          submit: 'Find Available Vehicles',
-        })
-          .blocks(
-            Blocks.Input({
-              label: 'Vehicle Type',
-              blockId: 'type',
-            }).element(
-              Elements.StaticSelect({
-                placeholder: 'Choose a vehicle type...',
-                actionId: 'type',
-              }).options(
-                (await this.vehicleService.allVehicleTypes()).map((type) =>
-                  Bits.Option({
-                    text: type.name,
-                    value: type.id.toString(),
-                  }),
-                ),
-              ),
-            ),
-            Blocks.Input({
-              label: 'Available Start Date',
-              blockId: 'start-date',
-            }).element(
-              Elements.DatePicker({
-                actionId: 'start-date',
-                initialDate: new Date(),
-              }),
-            ),
-            Blocks.Input({
-              label: 'Available Start Time',
-              blockId: 'start-time',
-            }).element(
-              Elements.TimePicker({
-                actionId: 'start-time',
-                initialTime: ((date) =>
-                  `${date.getHours()}:${date.getMinutes()}`)(new Date()),
-              }),
-            ),
-            Blocks.Input({
-              label: 'Available End Date',
-              blockId: 'end-date',
-            }).element(
-              Elements.DatePicker({
-                actionId: 'end-date',
-                initialDate: ((date) =>
-                  date.getHours() + DEFAULT_RESERVATION_PERIOD_HRS > 24
-                    ? new Date(
-                        date.setDate(
-                          date.getDate() +
-                            Math.floor(
-                              (date.getHours() +
-                                DEFAULT_RESERVATION_PERIOD_HRS) /
-                                24,
-                            ),
-                        ),
-                      )
-                    : date)(new Date()),
-              }),
-            ),
-            Blocks.Input({
-              label: 'Available End Time',
-              blockId: 'end-time',
-            }).element(
-              Elements.TimePicker({
-                actionId: 'end-time',
-                initialTime: ((date) =>
-                  ((date.getHours() + DEFAULT_RESERVATION_PERIOD_HRS) % 24) +
-                  ':' +
-                  date.getMinutes())(new Date()),
-              }),
-            ),
-            Blocks.Input({
-              label: 'Reservation Length (Hours)',
-              blockId: 'reservation-period',
-            }).element(
-              Elements.StaticSelect({
-                placeholder: 'Reservation length in hours...',
-                actionId: 'reservation-period',
-              }).options(
-                DEFAULT_RESERVATION_PERIOD_LENGTH_HRS.map((x) =>
-                  Bits.Option({
-                    text: x,
-                    value: x,
-                  }),
-                ),
-              ),
-            ),
-          )
-          .buildToJSON(),
+        view: FreeVehicleQueryBlocks({
+          vehicleTypes: await this.vehicleService.allVehicleTypes(),
+          error: 'Find a vehicle',
+        }),
       },
       {
         headers: {

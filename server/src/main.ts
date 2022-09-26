@@ -4,7 +4,9 @@ import { ValidationPipe } from '@nestjs/common';
 import * as cookieParser from 'cookie-parser';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    rawBody: true, // This is required for SlackVerificationMiddleware HMAC
+  });
 
   app.use(cookieParser());
 

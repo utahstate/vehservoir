@@ -141,7 +141,7 @@ export class VehicleController {
 
     if (!vehicleType) {
       throw new HttpException(
-        `No such vehicle type ${query.type} , please create it or check your request`,
+        `No such vehicle type ${query.type}, please create it or check your request`,
         HttpStatus.BAD_REQUEST,
       );
     }
