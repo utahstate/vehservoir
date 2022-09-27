@@ -10,7 +10,7 @@ export interface LoginModalProps {
 const LoginModal: FC<LoginModalProps> = ({
   setLoginModalIsOpen,
 }): JSX.Element => {
-  const { setSignedIn, setSessionOver } = useAuthContext();
+  const { setSignedIn, setSessionOver, setUserId } = useAuthContext();
   const [username, setUsername] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [error, setError] = useState<string>('');
@@ -36,6 +36,8 @@ const LoginModal: FC<LoginModalProps> = ({
         }
 
         setSignedIn(true);
+
+        setUserId(data.id);
 
         setSessionOver(new Date(data.expiration));
         setLoginModalIsOpen(false);

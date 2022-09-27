@@ -12,7 +12,7 @@ import {
   Res,
   UseGuards,
 } from '@nestjs/common';
-import { AdminCreationDto } from 'dto/auth/AdminCreation';
+import { AdminSaveDto } from 'dto/auth/AdminSaveDto';
 import { JwtAuthGuard } from 'src/auth/jwt_auth';
 import { LocalAuthGuard } from 'src/auth/local_auth';
 import { Admin } from 'src/entities/admin';
@@ -25,7 +25,7 @@ export class AdminController {
 
   @UseGuards(JwtAuthGuard)
   @Post('/api/admin/register')
-  async create(@Body() adminRegistration: AdminCreationDto): Promise<Admin> {
+  async create(@Body() adminRegistration: AdminSaveDto): Promise<Admin> {
     const admin = await this.adminService.create(adminRegistration);
     delete admin.password;
     return admin;
@@ -45,6 +45,7 @@ export class AdminController {
 
     return {
       message: 'Login successful',
+      id: req.user.id,
       expiration: new Date(new Date().getTime() + twelveHours),
     };
   }
@@ -63,15 +64,18 @@ export class AdminController {
 
   @UseGuards(JwtAuthGuard)
   @Get('/api/admins')
-  getAdmins(@Request() req: any) {
-    return this.adminService.allAdmins();
+  async getAdmins() {
+    const noPasswordAdmins = (await this.adminService.allAdmins()).map(
+      ({ password, ...rest }) => rest,
+    );
+    return noPasswordAdmins;
   }
 
   @UseGuards(JwtAuthGuard)
   @Patch('/api/admin/:id')
   async updateAdmin(
     @Param('id') id: number,
-    @Body() adminPayload: Partial<AdminCreationDto>,
+    @Body() adminPayload: AdminSaveDto,
   ) {
     const admin = await this.adminService.findOne({ id });
 
@@ -82,9 +86,13 @@ export class AdminController {
     if (admin.username) {
       admin.username = adminPayload.username;
     }
+    if (admin.password) {
+      admin.password = adminPayload.password;
+    }
 
-    delete admin.password;
-    return await this.adminService.save(admin);
+    const result = await this.adminService.save(admin);
+    delete result.password;
+    return result;
   }
 
   @UseGuards(JwtAuthGuard)
@@ -96,7 +104,6 @@ export class AdminController {
       throw new HttpException('Admin was not found', HttpStatus.NOT_FOUND);
     }
 
-    delete admin.password;
     return this.adminService.remove(admin);
   }
 }

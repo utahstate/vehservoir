@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import DeleteAdminModal from '../../components/admin/admins/DeleteAdminModal';
 import SaveAdminModal from '../../components/admin/admins/SaveAdminModal';
 import { useAuthContext } from '../../context/AuthContext';
@@ -8,6 +7,7 @@ import { toTitleCase } from './Vehicles';
 export interface AdminData {
   id: number | null;
   username: string;
+  password: string;
   creationDate: Date;
 }
 
@@ -27,7 +27,7 @@ const actions: Record<string, (d: AdminData) => Promise<Response>> = {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { id, ...dataToSend } = currentAdminData;
 
-    return fetch(`/api/admin`, {
+    return fetch(`/api/admin/register`, {
       method: 'POST',
       headers: {
         'Content-type': 'application/json',
@@ -59,6 +59,7 @@ const Admins: React.FC = (): JSX.Element => {
   const [currentAdminData, setCurrentAdminData] = useState<AdminData>({
     id: null,
     username: '',
+    password: '',
     creationDate: new Date(),
   });
 
@@ -95,13 +96,26 @@ const Admins: React.FC = (): JSX.Element => {
     <>
       <div className="container">
         <h1>Manage Admins</h1>
+        {signedIn ? (
+          <button
+            className="btn btn-default"
+            onClick={() => {
+              setSelectedAction('create');
+              setModalIsOpen(true);
+            }}
+          >
+            Register New Admin +
+          </button>
+        ) : (
+          <></>
+        )}
         <table>
           <thead>
             <tr>
               <th>ID</th>
               <th>Username</th>
               <th>Creation Date</th>
-              <th>Actions</th>
+              {signedIn ? <th>Actions</th> : <></>}
             </tr>
           </thead>
           <tbody>
@@ -123,7 +137,12 @@ const Admins: React.FC = (): JSX.Element => {
                         <a
                           onClick={() => {
                             setSelectedAction('update');
-                            setCurrentAdminData({ id, username, creationDate });
+                            setCurrentAdminData({
+                              id,
+                              username,
+                              password: '',
+                              creationDate,
+                            });
                             setModalIsOpen(!modalIsOpen);
                           }}
                         >
@@ -132,7 +151,12 @@ const Admins: React.FC = (): JSX.Element => {
                         <a
                           onClick={() => {
                             setSelectedAction('remove');
-                            setCurrentAdminData({ id, username, creationDate });
+                            setCurrentAdminData({
+                              id,
+                              username,
+                              password: '',
+                              creationDate,
+                            });
                             setModalIsOpen(!modalIsOpen);
                           }}
                         >

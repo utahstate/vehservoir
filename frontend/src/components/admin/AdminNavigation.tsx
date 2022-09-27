@@ -4,7 +4,7 @@ import { useAuthContext } from '../../context/AuthContext';
 import LoginModal from './LoginModal';
 
 const AdminNavigation: React.FC = (): JSX.Element => {
-  const { signedIn, setSignedIn, setSessionOver } = useAuthContext();
+  const { signedIn, setSignedIn, setSessionOver, setUserId } = useAuthContext();
   const [loginModalIsOpen, setLoginModalIsOpen] =
     React.useState<boolean>(false);
 
@@ -16,6 +16,7 @@ const AdminNavigation: React.FC = (): JSX.Element => {
       credentials: 'same-origin',
     }).then(() => {
       setSignedIn(false);
+      setUserId(null);
       setSessionOver(new Date());
     });
   };
