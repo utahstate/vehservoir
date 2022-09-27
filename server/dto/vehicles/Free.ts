@@ -64,7 +64,7 @@ export class Free {
     message:
       'Reservation period must be less than (or equal) to the difference in hours of the search dates',
   })
-  period: number;
+  periodSeconds: number;
 
   @IsDate()
   @Type(() => Date)
@@ -80,9 +80,9 @@ export class Free {
   })
   end: Date;
 
-  constructor(type: string, period: number, start: Date, end: Date) {
+  constructor(type: string, periodSeconds: number, start: Date, end: Date) {
     this.type = type;
-    this.period = period;
+    this.periodSeconds = periodSeconds;
     this.start = start;
     this.end = end;
   }

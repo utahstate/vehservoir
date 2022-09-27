@@ -142,7 +142,7 @@ export class VehicleController {
         query.start,
         query.end,
       ),
-      query.period,
+      query.periodSeconds,
     );
   }
 }

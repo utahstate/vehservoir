@@ -5,8 +5,7 @@ import { clockString } from 'src/utils/dates';
 const DEFAULT_RESERVATION_PERIOD_HRS = 2;
 const DEFAULT_RESERVATION_PERIOD_LENGTH_HRS = Array(10)
   .fill(0)
-  .map((_, i) => (i + 1) / 2)
-  .map((x) => x.toFixed(2)); // Values by half an hour between 0.5 and 5
+  .map((_, i) => (i + 1) / 2); // Values by half an hour between 0.5 and 5
 
 interface FreeVehicleQueryBlocksProps {
   vehicleTypes: VehicleType[];
@@ -119,10 +118,10 @@ export const FreeVehicleQueryBlocks = (props: FreeVehicleQueryBlocksProps) => {
           placeholder: 'Reservation length in hours...',
           actionId: 'reservationPeriod',
         }).options(
-          DEFAULT_RESERVATION_PERIOD_LENGTH_HRS.map((periodLength) =>
+          DEFAULT_RESERVATION_PERIOD_LENGTH_HRS.map((periodHourLength) =>
             Bits.Option({
-              text: periodLength,
-              value: periodLength,
+              text: periodHourLength.toFixed(2),
+              value: (periodHourLength * 60 * 60).toString(10),
             }),
           ),
         ),

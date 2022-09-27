@@ -1,4 +1,4 @@
-import { subtractRanges } from './dates';
+import { seperateDateRange, subtractRanges } from './dates';
 
 describe('subtract ranges', () => {
   it('should subtract unordered ranges of dates', () => {
@@ -100,6 +100,32 @@ describe('subtract ranges', () => {
         new Date('2022-01-01T00:40:00.000Z'),
         new Date('2022-01-01T00:50:00.000Z'),
       ],
+    ]);
+  });
+});
+
+describe('seperateDateRange', () => {
+  it('should split by ten minutes over twenty minute periods', () => {
+    const result = seperateDateRange(
+      [new Date('2022-01-01T00:00Z'), new Date('2022-01-01T00:30:00Z')],
+      20 * 60,
+      10 * 60,
+    );
+    expect(result).toEqual([
+      [new Date('2022-01-01T00:00:00Z'), new Date('2022-01-01T00:20:00Z')],
+      [new Date('2022-01-01T00:10:00Z'), new Date('2022-01-01T00:30:00Z')],
+    ]);
+  });
+
+  it('should split by fifteen minutes over thirty minute periods', () => {
+    const result = seperateDateRange(
+      [new Date('2022-01-01T00:05Z'), new Date('2022-01-01T00:57Z')],
+      30 * 60,
+      15 * 60,
+    );
+    expect(result).toEqual([
+      [new Date('2022-01-01T00:05Z'), new Date('2022-01-01T00:35Z')],
+      [new Date('2022-01-01T00:20Z'), new Date('2022-01-01T00:50Z')],
     ]);
   });
 });

@@ -58,3 +58,26 @@ export const toTimeZone = (date: Date, timeZone: string) => {
 
 export const clockString = (hours: number, minutes: number) =>
   `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+
+const addSeconds = (date: Date, seconds: number) =>
+  new Date(date.getTime() + seconds * 1000);
+
+export const seperateDateRange = (
+  [start, end]: [Date, Date],
+  periodSeconds: number,
+  separationSeconds: number,
+  maxEntries = 20,
+): [Date, Date][] => {
+  const result: [Date, Date][] = [];
+
+  let begin = start;
+  let finish = addSeconds(start, periodSeconds);
+  let i = 0;
+  while (finish.getTime() <= end.getTime() && i < maxEntries) {
+    result.push([begin, finish]);
+    begin = addSeconds(begin, separationSeconds);
+    finish = addSeconds(finish, separationSeconds);
+    i++;
+  }
+  return result;
+};

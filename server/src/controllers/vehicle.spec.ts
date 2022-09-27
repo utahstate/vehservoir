@@ -216,7 +216,7 @@ describe('VehicleController', () => {
           type: 'Does not exist',
           start: new Date(),
           end: new Date(),
-          period: 0,
+          periodSeconds: 0,
         });
       } catch (e) {
         expect(e).toBeInstanceOf(HttpException);
@@ -232,7 +232,7 @@ describe('VehicleController', () => {
           type: 'Minivan',
           start,
           end,
-          period: 3600 * 1000 + 1,
+          periodSeconds: 3600 * 1000 + 1,
         });
       } catch (e) {
         expect(e).toBeInstanceOf(HttpException);
@@ -247,7 +247,7 @@ describe('VehicleController', () => {
         start,
         end,
         type: 'Golf Cart',
-        period: 60 * 60,
+        periodSeconds: 60 * 60,
       });
 
       expect(vehicleAvailabilities).toEqual([
