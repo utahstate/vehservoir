@@ -1,14 +1,12 @@
 import { Modal, Blocks, Elements, Bits } from 'slack-block-builder';
 import { VehicleAvailability } from 'src/services/vehicle';
-import { applyTimezoneOffset, toTimeZone } from 'src/utils/dates';
 
 interface ReserveVehicleBlockProps {
-  vehicleAvailabilities: Map<number, VehicleAvailability>;
-  userTimezoneOffset: number;
+  vehicleAvailabilities: VehicleAvailability[];
+  userTimezone: string;
 }
 
 export const ReserveVehicleBlock = (props: ReserveVehicleBlockProps) => {
-  console.log(props.vehicleAvailabilities);
   return Modal({
     title: 'Reserve Vehicle',
     submit: 'Make Reservation',
@@ -23,24 +21,21 @@ export const ReserveVehicleBlock = (props: ReserveVehicleBlockProps) => {
           actionId: 'reservation',
         }).optionGroups(
           Array.from(props.vehicleAvailabilities).map(
-            ([vehicleId, vehicleAvailability]) => {
-              console.log(vehicleId, vehicleAvailability);
+            ({ vehicle, availability }) => {
               return Bits.OptionGroup({
-                label: vehicleAvailability.vehicle.name,
+                label: vehicle.name,
               }).options(
-                vehicleAvailability.availability.map(
-                  (timeRange: [Date, Date]) =>
-                    Bits.Option({
-                      text: timeRange
-                        .map((date) =>
-                          applyTimezoneOffset(
-                            date,
-                            -props.userTimezoneOffset, // Go back from UTC
-                          ).toLocaleString(),
-                        )
-                        .join(' - '),
-                      value: JSON.stringify(timeRange),
-                    }),
+                availability.map((timeRange: [Date, Date]) =>
+                  Bits.Option({
+                    text: timeRange
+                      .map((date) =>
+                        date.toLocaleString('en-US', {
+                          timeZone: props.userTimezone,
+                        }),
+                      )
+                      .join(' - '),
+                    value: JSON.stringify({ vehicleId: vehicle.id, timeRange }),
+                  }),
                 ),
               );
             },
@@ -48,5 +43,5 @@ export const ReserveVehicleBlock = (props: ReserveVehicleBlockProps) => {
         ),
       ),
     )
-    .buildToJSON();
+    .buildToObject();
 };

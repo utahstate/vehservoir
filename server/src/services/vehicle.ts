@@ -135,6 +135,27 @@ export class VehicleService {
     });
   }
 
+  public static filterAvailabilitiesByPeriodExtension(
+    vehicleAvailabilityMap: Map<number, VehicleAvailability>,
+    periodSeconds: number,
+  ): VehicleAvailability[] {
+    const vehicleAvailabilities: VehicleAvailability[] = Array.from(
+      vehicleAvailabilityMap,
+    ).map(([, vehicleAvailability]) => vehicleAvailability);
+
+    return vehicleAvailabilities
+      .map((vehicleAvailability) => {
+        // Availability is longer or equal to the query period
+        const availability = vehicleAvailability.availability.filter(
+          ([start, end]) =>
+            end.getTime() - start.getTime() >= periodSeconds * 1000,
+        );
+        // Overwrite availability with the filtered one
+        return { ...vehicleAvailability, availability };
+      })
+      .filter((vehicleAvailability) => vehicleAvailability.availability.length);
+  }
+
   async vehicleAvailable(
     vehicle: Vehicle,
     start: Date,

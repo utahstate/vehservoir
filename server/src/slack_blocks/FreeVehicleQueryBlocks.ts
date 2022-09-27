@@ -133,5 +133,5 @@ export const FreeVehicleQueryBlocks = (props: FreeVehicleQueryBlocksProps) => {
           })
         : null,
     )
-    .buildToJSON();
+    .buildToObject();
 };

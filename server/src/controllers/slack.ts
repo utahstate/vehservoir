@@ -26,13 +26,20 @@ interface ReservationFindAvailableViewState {
   };
 }
 
+enum ReserveState {
+  FINDING_VEHICLE,
+  RESERVING_VEHICLE,
+}
 @Controller()
 export class SlackController {
+  private viewStates: Record<string, ReserveState>; // Preserves Slack modal state per view
   constructor(
     private reservationService: ReservationService,
     private vehicleService: VehicleService,
     private configService: ConfigService,
-  ) {}
+  ) {
+    this.viewStates = {};
+  }
 
   private async getUserTimezoneDetails(
     user_id: string,
@@ -59,13 +66,13 @@ export class SlackController {
       .values as ReservationFindAvailableViewState;
     const startDate = applyTimezoneOffset(
       new Date(
-        `${reservationValues.startDate.startDate.selected_date} ${reservationValues.startTime.startTime.selected_time}`,
+        `${reservationValues.startDate.startDate.selected_date}T${reservationValues.startTime.startTime.selected_time}Z`,
       ),
       userTimezoneOffset,
     );
     const endDate = applyTimezoneOffset(
       new Date(
-        `${reservationValues.endDate.endDate.selected_date} ${reservationValues.endTime.endTime.selected_time}`,
+        `${reservationValues.endDate.endDate.selected_date}T${reservationValues.endTime.endTime.selected_time}Z`,
       ),
       userTimezoneOffset,
     );
@@ -97,12 +104,18 @@ export class SlackController {
     }
 
     const vehicleAvailabilities =
-      await this.vehicleService.vehicleFreePeriodsBy(
-        {
-          type: parseInt(reservationValues.type.type.selected_option.value, 10),
-        },
-        startDate,
-        endDate,
+      VehicleService.filterAvailabilitiesByPeriodExtension(
+        await this.vehicleService.vehicleFreePeriodsBy(
+          {
+            type: parseInt(
+              reservationValues.type.type.selected_option.value,
+              10,
+            ),
+          },
+          startDate,
+          endDate,
+        ),
+        validateFreeBody.period,
       );
 
     if (!vehicleAvailabilities) {
@@ -125,57 +138,88 @@ export class SlackController {
       bodyPayload.user.id,
     );
 
-    if (bodyPayload.type === 'view_submission') {
-      const { errors, vehicleAvailabilities } =
-        await this.getReservableOrErrors(
-          bodyPayload,
-          userTimezoneDetails.offset,
-        );
-      if (errors) {
-        console.log(errors);
-        return {
-          response_action: 'update',
-          view: FreeVehicleQueryBlocks({
-            vehicleTypes: await this.vehicleService.allVehicleTypes(),
-            error: errors.map((x) => `* ${x}`).join('\n'),
-          }),
-        };
+    const external_id = bodyPayload.view.id;
+    if (bodyPayload.type === 'view_closed') {
+      if (bodyPayload.is_cleared) {
+        delete this.viewStates[external_id];
+      } else if (
+        this.viewStates[external_id] === ReserveState.RESERVING_VEHICLE
+      ) {
+        this.viewStates[external_id] = ReserveState.FINDING_VEHICLE;
+      } else {
+        delete this.viewStates[external_id];
       }
-      const view = ReserveVehicleBlock({
-        vehicleAvailabilities,
-        userTimezoneOffset: userTimezoneDetails.offset,
-      });
-      return {
-        response_action: 'push',
-        view,
-      };
     }
-    return { text: 'ok, got that' };
+    if (bodyPayload.type === 'view_submission') {
+      switch (this.viewStates[external_id]) {
+        case ReserveState.RESERVING_VEHICLE: {
+        }
+        case ReserveState.FINDING_VEHICLE:
+        default: {
+          const { errors, vehicleAvailabilities } =
+            await this.getReservableOrErrors(
+              bodyPayload,
+              userTimezoneDetails.offset,
+            );
+          if (errors) {
+            return {
+              response_action: 'update',
+              view: JSON.stringify({
+                external_id,
+                ...FreeVehicleQueryBlocks({
+                  vehicleTypes: await this.vehicleService.allVehicleTypes(),
+                  error: errors.map((x) => `* ${x}`).join('\n'),
+                }),
+              }),
+            };
+          }
+          this.viewStates[external_id] = ReserveState.RESERVING_VEHICLE;
+          return {
+            response_action: 'push',
+            view: JSON.stringify({
+              external_id,
+              notify_on_close: true,
+              ...ReserveVehicleBlock({
+                vehicleAvailabilities,
+                userTimezone: userTimezoneDetails.name,
+              }),
+            }),
+          };
+        }
+      }
+    }
   }
 
   @Post('/api/slack/reserve')
   async makeReserve(@Body() req): Promise<string> {
-    const callback_id = uuidv4();
-    axios.post(
-      'https://slack.com/api/views.open',
-      {
-        trigger_id: req.trigger_id,
-        callback_id,
-        view: FreeVehicleQueryBlocks({
-          vehicleTypes: await this.vehicleService.allVehicleTypes(),
-          userTimeNow: toTimeZone(
-            new Date(),
-            (await this.getUserTimezoneDetails(req.user_id)).name,
-          ),
-        }),
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${this.configService.get('SLACK_TOKEN')}`,
-          'Content-Type': 'application/json',
+    const external_id = uuidv4();
+    axios
+      .post(
+        'https://slack.com/api/views.open',
+        {
+          trigger_id: req.trigger_id,
+          view: JSON.stringify({
+            external_id,
+            notify_on_close: true,
+            ...FreeVehicleQueryBlocks({
+              vehicleTypes: await this.vehicleService.allVehicleTypes(),
+              userTimeNow: toTimeZone(
+                new Date(),
+                (await this.getUserTimezoneDetails(req.user_id)).name,
+              ),
+            }),
+          }),
         },
-      },
-    );
+        {
+          headers: {
+            Authorization: `Bearer ${this.configService.get('SLACK_TOKEN')}`,
+            'Content-Type': 'application/json',
+          },
+        },
+      )
+      .then(() => {
+        this.viewStates[external_id] = ReserveState.FINDING_VEHICLE;
+      });
     return 'Please fill out the form';
   }
 }

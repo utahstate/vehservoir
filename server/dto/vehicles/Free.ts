@@ -46,7 +46,6 @@ const IsBefore = (property: string, validationOptions?: ValidationOptions) => {
         validate(value, validationArguments?) {
           const [relatedPropertyName] = validationArguments.constraints;
           const relatedValue = validationArguments.object[relatedPropertyName];
-          console.log(relatedValue, value);
           return value.getTime() < relatedValue.getTime();
         },
       },

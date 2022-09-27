@@ -136,24 +136,13 @@ export class VehicleController {
       );
     }
 
-    const vehicleAvailabilities: VehicleAvailability[] = Array.from(
+    return VehicleService.filterAvailabilitiesByPeriodExtension(
       await this.vehicleService.vehicleFreePeriodsBy(
         { type: vehicleType },
         query.start,
         query.end,
       ),
-    ).map(([, vehicleAvailability]) => vehicleAvailability);
-
-    return vehicleAvailabilities
-      .map((vehicleAvailability) => {
-        // Availability is longer or equal to the query period
-        const availability = vehicleAvailability.availability.filter(
-          ([start, end]) =>
-            end.getTime() - start.getTime() >= query.period * 1000,
-        );
-        // Overwrite availability with the filtered one
-        return { ...vehicleAvailability, availability };
-      })
-      .filter((vehicleAvailability) => vehicleAvailability.availability.length);
+      query.period,
+    );
   }
 }

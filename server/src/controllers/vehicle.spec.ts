@@ -1,10 +1,11 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { Test, TestingModule } from '@nestjs/testing';
 import { Vehicle } from 'src/entities/vehicle';
 import { VehicleType } from 'src/entities/vehicle_type';
 import { VehicleAvailability, VehicleService } from 'src/services/vehicle';
 import { VehicleController } from './vehicle';
 import { VehicleCreationDto } from 'dto/vehicles/Creation';
-import { HttpException, NotFoundException } from '@nestjs/common';
+import { HttpException } from '@nestjs/common';
 
 // Firstly mock the VehicleService database wrapper and create dummy data
 let vehicleTypeGlobalId = 0;
