@@ -96,13 +96,26 @@ const Admins: React.FC = (): JSX.Element => {
     <>
       <div className="container">
         <h1>Manage Admins</h1>
+        {signedIn ? (
+          <button
+            className="btn btn-default"
+            onClick={() => {
+              setSelectedAction('create');
+              setModalIsOpen(true);
+            }}
+          >
+            Register New Admin +
+          </button>
+        ) : (
+          <></>
+        )}
         <table>
           <thead>
             <tr>
               <th>ID</th>
               <th>Username</th>
               <th>Creation Date</th>
-              <th>Actions</th>
+              {signedIn ? <th>Actions</th> : <></>}
             </tr>
           </thead>
           <tbody>
