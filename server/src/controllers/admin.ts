@@ -1,7 +1,12 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  HttpException,
+  HttpStatus,
+  Param,
+  Patch,
   Post,
   Request,
   Res,
@@ -12,6 +17,7 @@ import { JwtAuthGuard } from 'src/auth/jwt_auth';
 import { LocalAuthGuard } from 'src/auth/local_auth';
 import { Admin } from 'src/entities/admin';
 import { AdminService } from 'src/services/admin';
+import { DeleteResult } from 'typeorm';
 
 @Controller()
 export class AdminController {
@@ -53,5 +59,44 @@ export class AdminController {
   @Get('/api/admin/profile')
   getProfile(@Request() req: any) {
     return { username: req.user.username, id: req.user.sub };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('/api/admins')
+  getAdmins(@Request() req: any) {
+    return this.adminService.allAdmins();
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('/api/admin/:id')
+  async updateAdmin(
+    @Param('id') id: number,
+    @Body() adminPayload: Partial<AdminCreationDto>,
+  ) {
+    const admin = await this.adminService.findOne({ id });
+
+    if (!admin) {
+      throw new HttpException('Admin was not found', HttpStatus.NOT_FOUND);
+    }
+
+    if (admin.username) {
+      admin.username = adminPayload.username;
+    }
+
+    delete admin.password;
+    return await this.adminService.save(admin);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete('/api/admin/:id')
+  async deleteAdmin(@Param('id') id: number): Promise<DeleteResult> {
+    const admin = await this.adminService.findOne({ id });
+
+    if (!admin) {
+      throw new HttpException('Admin was not found', HttpStatus.NOT_FOUND);
+    }
+
+    delete admin.password;
+    return this.adminService.remove(admin);
   }
 }

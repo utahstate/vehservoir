@@ -2,7 +2,7 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { AdminCreationDto } from 'dto/auth/AdminCreation';
 import { Admin } from 'src/entities/admin';
-import { Repository } from 'typeorm';
+import { DeleteResult, Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 
@@ -15,6 +15,15 @@ export class AdminService {
 
   async findOne(options: Record<string, any>): Promise<Admin> {
     return this.adminRepo.findOne({ where: options });
+  }
+
+  async allAdmins(): Promise<Admin[]> {
+    return this.adminRepo.find();
+  }
+
+  async save(admin: AdminCreationDto): Promise<Admin> {
+    console.log(admin);
+    return await this.adminRepo.save(admin);
   }
 
   async validateAdmin(
@@ -49,5 +58,9 @@ export class AdminService {
       return this.adminRepo.save(admin);
     }
     throw new BadRequestException('Username already taken');
+  }
+
+  async remove(admin: Admin): Promise<DeleteResult> {
+    return await this.adminRepo.delete(admin);
   }
 }
