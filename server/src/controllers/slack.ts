@@ -7,8 +7,12 @@ import { v4 as uuidv4 } from 'uuid';
 import { FreeVehicleQueryBlocks } from 'src/slack_blocks/FreeVehicleQueryBlocks';
 import { Free } from 'dto/vehicles/Free';
 import { validateSync } from 'class-validator';
-import { applyTimezoneOffset } from 'src/utils/dates';
+import { applyTimezoneOffset, toTimeZone } from 'src/utils/dates';
 import { ReserveVehicleBlock } from 'src/slack_blocks/ReserveVehicleBlocks';
+import { Reservation } from 'src/entities/reservation';
+import { SlackRequestService } from 'src/services/slack_request';
+
+const formatErrors = (errors) => errors.map((x) => `* ${x}`).join('\n');
 
 export interface ReservationFindAvailableViewState {
   type: {
@@ -50,7 +54,7 @@ export interface ViewState {
 }
 
 export interface SlackUser {
-  id: number;
+  id: string;
   real_name: string;
   tz_offset: number;
   tz: string;
@@ -63,8 +67,145 @@ export class SlackController {
     private reservationService: ReservationService,
     private vehicleService: VehicleService,
     private configService: ConfigService,
+    private slackRequestService: SlackRequestService,
   ) {
     this.viewStates = {};
+  }
+
+  @Post('/api/slack/reserve')
+  async reserveCommand(@Body() req): Promise<string> {
+    const external_id = uuidv4();
+
+    const viewState = {
+      modal: ReserveModal.FINDING_VEHICLE,
+      params: {
+        vehicleTypes: await this.vehicleService.allVehicleTypes(),
+      },
+      user: await this.getUserDetails(req.user_id),
+    };
+    this.viewStates[external_id] = viewState;
+
+    axios.post(
+      'https://slack.com/api/views.open',
+      {
+        trigger_id: req.trigger_id,
+        view: JSON.stringify({
+          external_id,
+          notify_on_close: true,
+          ...FreeVehicleQueryBlocks(viewState),
+        }),
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${this.configService.get('SLACK_TOKEN')}`,
+          'Content-Type': 'application/json',
+        },
+      },
+    );
+    return 'Please fill out the form';
+  }
+
+  @Post('/api/slack/interactions')
+  async getInteraction(@Body() body: { payload: string }): Promise<any> {
+    const bodyPayload = JSON.parse(body.payload);
+    const oldExternalId = bodyPayload.view.external_id;
+
+    if (bodyPayload.type === 'view_closed' && bodyPayload.is_cleared) {
+      delete this.viewStates[oldExternalId];
+    }
+
+    if (bodyPayload.type === 'view_submission') {
+      const external_id = uuidv4();
+      const oldState = this.viewStates[oldExternalId];
+      this.viewStates[external_id] = { ...oldState };
+      const user = this.viewStates[external_id].user;
+      delete this.viewStates[oldExternalId];
+
+      if (
+        this.viewStates[external_id].modal === ReserveModal.RESERVING_VEHICLE
+      ) {
+        const { reservation, errors } = await this.makeReservationOrErrors(
+          bodyPayload,
+          this.viewStates[external_id].user,
+        );
+        if (!errors && reservation) {
+          this.sendUserMessage(
+            user,
+            `Thanks, ${user.real_name}! We got your ${
+              reservation.vehicle.name
+            } ${(
+              (reservation.end.getTime() - reservation.start.getTime()) /
+              (60 * 60 * 1000)
+            ).toFixed(2)} hour reservation starting ${toTimeZone(
+              reservation.start,
+              user.tz,
+            ).toLocaleString()}`,
+          );
+          delete this.viewStates[oldExternalId];
+          return {
+            response_action: 'clear',
+          };
+        }
+        this.viewStates[external_id].params.error = formatErrors(errors);
+        return {
+          response_action: 'update',
+          view: JSON.stringify({
+            external_id,
+            notify_on_close: true,
+            ...ReserveVehicleBlock(this.viewStates[external_id]),
+          }),
+        };
+      } else if (
+        this.viewStates[external_id].modal === ReserveModal.FINDING_VEHICLE
+      ) {
+        const { errors, periodSeconds, vehicleAvailabilities } =
+          await this.getReservableOrErrors(
+            bodyPayload,
+            this.viewStates[external_id].user.tz_offset,
+          );
+
+        if (errors) {
+          this.viewStates[external_id].modal = ReserveModal.FINDING_VEHICLE;
+          this.viewStates[external_id].params.error = formatErrors(errors);
+          return {
+            response_action: 'update',
+            view: JSON.stringify({
+              external_id,
+              notify_on_close: true,
+              ...FreeVehicleQueryBlocks(this.viewStates[external_id]),
+            }),
+          };
+        }
+        this.viewStates[external_id].modal = ReserveModal.RESERVING_VEHICLE;
+        this.viewStates[external_id].params = {
+          vehicleAvailabilities,
+          periodSeconds,
+        };
+        return {
+          response_action: 'update',
+          view: JSON.stringify({
+            external_id,
+            notify_on_close: true,
+            ...ReserveVehicleBlock(this.viewStates[external_id]),
+          }),
+        };
+      }
+    }
+  }
+
+  private async sendUserMessage(user: SlackUser, text: string) {
+    await axios.post(
+      'https://slack.com/api/chat.postMessage',
+      {
+        channel: user.id,
+        text,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${this.configService.get('SLACK_TOKEN')}`,
+        },
+      },
+    );
   }
 
   private async getUserDetails(user_id: string): Promise<SlackUser> {
@@ -81,12 +222,53 @@ export class SlackController {
     return { tz, tz_offset, id, real_name };
   }
 
-  private async makeReservation(bodyPayload: any) {
+  private async makeReservationOrErrors(bodyPayload: any, user: SlackUser) {
     const reservationValues = bodyPayload.view.state
       .values as ReservationRequestViewState;
-    console.log(
-      reservationValues.reservation.reservation.selected_option.value,
+    const {
+      vehicleId,
+      timeRange: [start, end],
+    } = ((x) => ({
+      vehicleId: parseInt(x.vehicleId),
+      timeRange: x.timeRange.map((d: string) => new Date(d)),
+    }))(
+      JSON.parse(
+        reservationValues.reservation.reservation.selected_option.value,
+      ),
     );
+
+    const vehicle = await this.vehicleService.findVehicleBy({ id: vehicleId });
+
+    const request = await this.slackRequestService.save({
+      slackUserId: user.id,
+      userName: user.real_name,
+    });
+
+    if (!request) {
+      return {
+        errors: ['Could not make request. Try again.'],
+      };
+    }
+
+    // Since we verify the request is from slack via the secret signing token,
+    // we know the request was validated against the Free DTO - no need for a
+    // second validation on the reservation here
+    const reservation = new Reservation();
+    reservation.vehicle = vehicle;
+    reservation.start = start;
+    reservation.end = end;
+    reservation.request = request;
+
+    if (await this.vehicleService.vehicleAvailable(vehicle, start, end)) {
+      return {
+        reservation: await this.reservationService.save(reservation),
+      };
+    }
+    return {
+      errors: [
+        'Reservation is no longer available; try another or make a new reservation request',
+      ],
+    };
   }
 
   private async getReservableOrErrors(
@@ -147,7 +329,7 @@ export class SlackController {
         validateFreeBody.periodSeconds,
       );
 
-    if (!vehicleAvailabilities) {
+    if (!vehicleAvailabilities.length) {
       return {
         errors: [
           'No available vehicles could be found. Decrease reservation length, change type, or increase available search period.',
@@ -159,106 +341,5 @@ export class SlackController {
       vehicleAvailabilities,
       periodSeconds: validateFreeBody.periodSeconds,
     };
-  }
-
-  @Post('/api/slack/interactions')
-  async getInteraction(@Body() body: { payload: string }): Promise<any> {
-    const bodyPayload = JSON.parse(body.payload);
-
-    const oldExternalId = bodyPayload.view.external_id;
-    if (bodyPayload.type === 'view_closed') {
-      if (bodyPayload.is_cleared) {
-        delete this.viewStates[oldExternalId];
-      } else if (
-        this.viewStates[oldExternalId].modal === ReserveModal.RESERVING_VEHICLE
-      ) {
-        this.viewStates[oldExternalId].modal = ReserveModal.FINDING_VEHICLE;
-      } else {
-        delete this.viewStates[oldExternalId];
-      }
-    }
-
-    if (bodyPayload.type === 'view_submission') {
-      const external_id = uuidv4();
-      const oldState = this.viewStates[oldExternalId];
-      this.viewStates[external_id] = { ...oldState };
-      delete this.viewStates[oldExternalId];
-
-      switch (oldState.modal) {
-        case ReserveModal.RESERVING_VEHICLE:
-          this.makeReservation(bodyPayload);
-          delete this.viewStates[oldExternalId];
-          return {
-            response_action: 'clear',
-          };
-        default:
-          const { errors, periodSeconds, vehicleAvailabilities } =
-            await this.getReservableOrErrors(
-              bodyPayload,
-              this.viewStates[external_id].user.tz_offset,
-            );
-
-          if (errors) {
-            this.viewStates[external_id].modal = ReserveModal.FINDING_VEHICLE;
-            this.viewStates[external_id].params.error = errors
-              .map((x) => `* ${x}`)
-              .join('\n');
-            return {
-              response_action: 'update',
-              view: JSON.stringify({
-                external_id,
-                notify_on_close: true,
-                ...FreeVehicleQueryBlocks(this.viewStates[external_id]),
-              }),
-            };
-          }
-          this.viewStates[external_id].modal = ReserveModal.RESERVING_VEHICLE;
-          this.viewStates[external_id].params = {
-            vehicleAvailabilities,
-            periodSeconds,
-          };
-          return {
-            response_action: 'push',
-            view: JSON.stringify({
-              external_id,
-              notify_on_close: true,
-              ...ReserveVehicleBlock(this.viewStates[external_id]),
-            }),
-          };
-      }
-    }
-  }
-
-  @Post('/api/slack/reserve')
-  async makeReserve(@Body() req): Promise<string> {
-    const external_id = uuidv4();
-
-    const viewState = {
-      modal: ReserveModal.FINDING_VEHICLE,
-      params: {
-        vehicleTypes: await this.vehicleService.allVehicleTypes(),
-      },
-      user: await this.getUserDetails(req.user_id),
-    };
-    this.viewStates[external_id] = viewState;
-
-    axios.post(
-      'https://slack.com/api/views.open',
-      {
-        trigger_id: req.trigger_id,
-        view: JSON.stringify({
-          external_id,
-          notify_on_close: true,
-          ...FreeVehicleQueryBlocks(viewState),
-        }),
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${this.configService.get('SLACK_TOKEN')}`,
-          'Content-Type': 'application/json',
-        },
-      },
-    );
-    return 'Please fill out the form';
   }
 }

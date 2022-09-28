@@ -161,10 +161,19 @@ export class VehicleService {
     start: Date,
     end: Date,
   ): Promise<boolean> {
-    const availability = (
+    const availability = await (
       await this.vehicleFreePeriodsBy(vehicle, start, end)
     ).get(vehicle.id)?.availability;
-
+    console.log();
+    console.log(
+      availability.every(([aStart, aEnd]) => {
+        console.log(aStart, aEnd);
+        return (
+          aStart.getTime() === start.getTime() &&
+          aEnd.getTime() === end.getTime()
+        );
+      }),
+    );
     return (
       !!availability &&
       !!availability.length &&

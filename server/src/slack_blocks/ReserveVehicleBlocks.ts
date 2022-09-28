@@ -6,6 +6,7 @@ interface ReserveVehicleBlockProps {
   params: {
     vehicleAvailabilities: VehicleAvailability[];
     periodSeconds: number;
+    error: string;
   };
   user: {
     tz: string;
@@ -74,6 +75,11 @@ export const ReserveVehicleBlock = ({
           actionId: 'reservation',
         }).optionGroups(optionGroups),
       ),
+      params.error
+        ? Blocks.Section({
+            text: `⚠️ \`\`\`${params.error}\`\`\` ⚠️`,
+          })
+        : null,
     )
     .buildToObject();
 };
