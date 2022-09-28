@@ -7,10 +7,10 @@ import { v4 as uuidv4 } from 'uuid';
 import { FreeVehicleQueryBlocks } from 'src/slack_blocks/FreeVehicleQueryBlocks';
 import { Free } from 'dto/vehicles/Free';
 import { validateSync } from 'class-validator';
-import { applyTimezoneOffset, toTimeZone } from 'src/utils/dates';
+import { applyTimezoneOffset } from 'src/utils/dates';
 import { ReserveVehicleBlock } from 'src/slack_blocks/ReserveVehicleBlocks';
 
-interface ReservationFindAvailableViewState {
+export interface ReservationFindAvailableViewState {
   type: {
     type: { type: string; selected_option: { text: string; value: string } };
   };
@@ -26,7 +26,7 @@ interface ReservationFindAvailableViewState {
   };
 }
 
-interface ReservationRequestViewState {
+export interface ReservationRequestViewState {
   reservation: {
     reservation: {
       type: string;
@@ -38,13 +38,27 @@ interface ReservationRequestViewState {
   };
 }
 
-enum ReserveState {
+export enum ReserveModal {
   FINDING_VEHICLE,
   RESERVING_VEHICLE,
 }
+
+export interface ViewState {
+  modal: ReserveModal;
+  params: any;
+  user: SlackUser;
+}
+
+export interface SlackUser {
+  id: number;
+  real_name: string;
+  tz_offset: number;
+  tz: string;
+}
+
 @Controller()
 export class SlackController {
-  private viewStates: Record<string, ReserveState>; // Preserves Slack modal state per view
+  private viewStates: Record<string, ViewState>; // Preserves Slack modal state per view
   constructor(
     private reservationService: ReservationService,
     private vehicleService: VehicleService,
@@ -53,21 +67,18 @@ export class SlackController {
     this.viewStates = {};
   }
 
-  private async getUserTimezoneDetails(
-    user_id: string,
-  ): Promise<{ offset: number; name: string }> {
-    const response = await axios.get('https://slack.com/api/users.info', {
-      params: {
-        user: user_id,
-      },
-      headers: {
-        Authorization: `Bearer ${this.configService.get('SLACK_TOKEN')}`,
-      },
-    });
-    return {
-      offset: response.data.user.tz_offset,
-      name: response.data.user.tz,
-    };
+  private async getUserDetails(user_id: string): Promise<SlackUser> {
+    const { tz, tz_offset, id, real_name } = (
+      await axios.get('https://slack.com/api/users.info', {
+        params: {
+          user: user_id,
+        },
+        headers: {
+          Authorization: `Bearer ${this.configService.get('SLACK_TOKEN')}`,
+        },
+      })
+    ).data.user;
+    return { tz, tz_offset, id, real_name };
   }
 
   private async makeReservation(bodyPayload: any) {
@@ -146,77 +157,72 @@ export class SlackController {
 
     return {
       vehicleAvailabilities,
+      periodSeconds: validateFreeBody.periodSeconds,
     };
   }
 
   @Post('/api/slack/interactions')
   async getInteraction(@Body() body: { payload: string }): Promise<any> {
     const bodyPayload = JSON.parse(body.payload);
-    const userTimezoneDetails = await this.getUserTimezoneDetails(
-      bodyPayload.user.id,
-    );
 
     const oldExternalId = bodyPayload.view.external_id;
     if (bodyPayload.type === 'view_closed') {
       if (bodyPayload.is_cleared) {
         delete this.viewStates[oldExternalId];
       } else if (
-        this.viewStates[oldExternalId] === ReserveState.RESERVING_VEHICLE
+        this.viewStates[oldExternalId].modal === ReserveModal.RESERVING_VEHICLE
       ) {
-        this.viewStates[oldExternalId] = ReserveState.FINDING_VEHICLE;
+        this.viewStates[oldExternalId].modal = ReserveModal.FINDING_VEHICLE;
       } else {
         delete this.viewStates[oldExternalId];
       }
     }
 
     if (bodyPayload.type === 'view_submission') {
+      const external_id = uuidv4();
       const oldState = this.viewStates[oldExternalId];
+      this.viewStates[external_id] = { ...oldState };
       delete this.viewStates[oldExternalId];
 
-      const external_id = uuidv4();
-
-      switch (oldState) {
-        case ReserveState.RESERVING_VEHICLE:
+      switch (oldState.modal) {
+        case ReserveModal.RESERVING_VEHICLE:
           this.makeReservation(bodyPayload);
           delete this.viewStates[oldExternalId];
           return {
             response_action: 'clear',
           };
         default:
-          const { errors, vehicleAvailabilities } =
+          const { errors, periodSeconds, vehicleAvailabilities } =
             await this.getReservableOrErrors(
               bodyPayload,
-              userTimezoneDetails.offset,
+              this.viewStates[external_id].user.tz_offset,
             );
 
           if (errors) {
-            this.viewStates[external_id] = ReserveState.FINDING_VEHICLE;
+            this.viewStates[external_id].modal = ReserveModal.FINDING_VEHICLE;
+            this.viewStates[external_id].params.error = errors
+              .map((x) => `* ${x}`)
+              .join('\n');
             return {
               response_action: 'update',
               view: JSON.stringify({
                 external_id,
                 notify_on_close: true,
-                ...FreeVehicleQueryBlocks({
-                  vehicleTypes: await this.vehicleService.allVehicleTypes(),
-                  error: errors.map((x) => `* ${x}`).join('\n'),
-                }),
+                ...FreeVehicleQueryBlocks(this.viewStates[external_id]),
               }),
             };
           }
-          this.viewStates[external_id] = ReserveState.RESERVING_VEHICLE;
+          this.viewStates[external_id].modal = ReserveModal.RESERVING_VEHICLE;
+          this.viewStates[external_id].params = {
+            vehicleAvailabilities,
+            periodSeconds,
+          };
           return {
             response_action: 'push',
             view: JSON.stringify({
               external_id,
               notify_on_close: true,
-              ...ReserveVehicleBlock({
-                vehicleAvailabilities,
-                userTimezone: userTimezoneDetails.name,
-                periodSeconds: parseFloat(
-                  bodyPayload.view.state.values.reservationPeriod
-                    .reservationPeriod.selected_option.value,
-                ),
-              }),
+              ...ReserveVehicleBlock(this.viewStates[external_id]),
             }),
           };
       }
@@ -226,6 +232,16 @@ export class SlackController {
   @Post('/api/slack/reserve')
   async makeReserve(@Body() req): Promise<string> {
     const external_id = uuidv4();
+
+    const viewState = {
+      modal: ReserveModal.FINDING_VEHICLE,
+      params: {
+        vehicleTypes: await this.vehicleService.allVehicleTypes(),
+      },
+      user: await this.getUserDetails(req.user_id),
+    };
+    this.viewStates[external_id] = viewState;
+
     axios.post(
       'https://slack.com/api/views.open',
       {
@@ -233,13 +249,7 @@ export class SlackController {
         view: JSON.stringify({
           external_id,
           notify_on_close: true,
-          ...FreeVehicleQueryBlocks({
-            vehicleTypes: await this.vehicleService.allVehicleTypes(),
-            userTimeNow: toTimeZone(
-              new Date(),
-              (await this.getUserTimezoneDetails(req.user_id)).name,
-            ),
-          }),
+          ...FreeVehicleQueryBlocks(viewState),
         }),
       },
       {
@@ -249,7 +259,6 @@ export class SlackController {
         },
       },
     );
-    this.viewStates[external_id] = ReserveState.FINDING_VEHICLE;
     return 'Please fill out the form';
   }
 }

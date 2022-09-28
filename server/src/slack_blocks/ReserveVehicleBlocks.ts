@@ -3,20 +3,27 @@ import { VehicleAvailability } from 'src/services/vehicle';
 import { seperateDateRange } from 'src/utils/dates';
 
 interface ReserveVehicleBlockProps {
-  vehicleAvailabilities: VehicleAvailability[];
-  periodSeconds: number;
-  userTimezone: string;
+  params: {
+    vehicleAvailabilities: VehicleAvailability[];
+    periodSeconds: number;
+  };
+  user: {
+    tz: string;
+  };
 }
 
 const DEFAULT_SEPERATION_SECONDS = 15 * 60;
 const MAX_OPTIONS = 50;
 
-export const ReserveVehicleBlock = (props: ReserveVehicleBlockProps) => {
+export const ReserveVehicleBlock = ({
+  params,
+  user,
+}: ReserveVehicleBlockProps) => {
   let totalOptions = 0;
 
   const optionGroups = [];
 
-  for (const vehicleAvailability of props.vehicleAvailabilities) {
+  for (const vehicleAvailability of params.vehicleAvailabilities) {
     if (totalOptions >= MAX_OPTIONS) {
       break;
     }
@@ -28,8 +35,8 @@ export const ReserveVehicleBlock = (props: ReserveVehicleBlockProps) => {
           .map((dateRange) =>
             seperateDateRange(
               dateRange,
-              props.periodSeconds,
-              Math.min(props.periodSeconds, DEFAULT_SEPERATION_SECONDS),
+              params.periodSeconds,
+              Math.min(params.periodSeconds, DEFAULT_SEPERATION_SECONDS),
             ).filter(() => ++totalOptions <= MAX_OPTIONS),
           )
           .filter((x) => x.length)
@@ -39,7 +46,7 @@ export const ReserveVehicleBlock = (props: ReserveVehicleBlockProps) => {
               text: timeRange
                 .map((date) =>
                   date.toLocaleString('en-US', {
-                    timeZone: props.userTimezone,
+                    timeZone: user.tz,
                   }),
                 )
                 .join(' - '),

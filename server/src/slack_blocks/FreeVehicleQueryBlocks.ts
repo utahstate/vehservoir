@@ -1,6 +1,6 @@
 import { Modal, Blocks, Elements, Bits } from 'slack-block-builder';
 import { VehicleType } from 'src/entities/vehicle_type';
-import { clockString } from 'src/utils/dates';
+import { clockString, toTimeZone } from 'src/utils/dates';
 
 const DEFAULT_RESERVATION_PERIOD_HRS = 2;
 const DEFAULT_RESERVATION_PERIOD_LENGTH_HRS = Array(10)
@@ -8,12 +8,20 @@ const DEFAULT_RESERVATION_PERIOD_LENGTH_HRS = Array(10)
   .map((_, i) => (i + 1) / 2); // Values by half an hour between 0.5 and 5
 
 interface FreeVehicleQueryBlocksProps {
-  vehicleTypes: VehicleType[];
-  userTimeNow?: Date;
-  error?: string;
+  user: {
+    tz: string;
+  };
+  params: {
+    vehicleTypes: VehicleType[];
+    error?: string;
+  };
 }
 
-export const FreeVehicleQueryBlocks = (props: FreeVehicleQueryBlocksProps) => {
+export const FreeVehicleQueryBlocks = ({
+  user,
+  params,
+}: FreeVehicleQueryBlocksProps) => {
+  const userTimeNow = toTimeZone(new Date(), user.tz);
   return Modal({
     title: 'Reserve Vehicle',
     submit: 'Find Available Vehicles',
@@ -27,7 +35,7 @@ export const FreeVehicleQueryBlocks = (props: FreeVehicleQueryBlocksProps) => {
           placeholder: 'Choose a vehicle type...',
           actionId: 'type',
         }).options(
-          props.vehicleTypes.map((type) =>
+          params.vehicleTypes.map((type) =>
             Bits.Option({
               text: type.name,
               value: type.id.toString(),
@@ -39,7 +47,7 @@ export const FreeVehicleQueryBlocks = (props: FreeVehicleQueryBlocksProps) => {
         label: 'Available Start Date',
         blockId: 'startDate',
       }).element(
-        ((x) => (props.userTimeNow ? x.initialDate(props.userTimeNow) : x))(
+        ((x) => (userTimeNow ? x.initialDate(userTimeNow) : x))(
           Elements.DatePicker({
             actionId: 'startDate',
           }),
@@ -50,12 +58,9 @@ export const FreeVehicleQueryBlocks = (props: FreeVehicleQueryBlocksProps) => {
         blockId: 'startTime',
       }).element(
         ((x) =>
-          props.userTimeNow
+          userTimeNow
             ? x.initialTime(
-                clockString(
-                  props.userTimeNow.getHours(),
-                  props.userTimeNow.getMinutes(),
-                ),
+                clockString(userTimeNow.getHours(), userTimeNow.getMinutes()),
               )
             : x)(
           Elements.TimePicker({
@@ -68,21 +73,20 @@ export const FreeVehicleQueryBlocks = (props: FreeVehicleQueryBlocksProps) => {
         blockId: 'endDate',
       }).element(
         ((x) =>
-          props.userTimeNow
+          userTimeNow
             ? x.initialDate(
-                props.userTimeNow.getHours() + DEFAULT_RESERVATION_PERIOD_HRS >=
-                  24
+                userTimeNow.getHours() + DEFAULT_RESERVATION_PERIOD_HRS >= 24
                   ? new Date(
-                      props.userTimeNow.setDate(
-                        props.userTimeNow.getDate() +
+                      userTimeNow.setDate(
+                        userTimeNow.getDate() +
                           Math.floor(
-                            (props.userTimeNow.getHours() +
+                            (userTimeNow.getHours() +
                               DEFAULT_RESERVATION_PERIOD_HRS) /
                               24,
                           ),
                       ),
                     )
-                  : props.userTimeNow,
+                  : userTimeNow,
               )
             : x)(
           Elements.DatePicker({
@@ -95,13 +99,12 @@ export const FreeVehicleQueryBlocks = (props: FreeVehicleQueryBlocksProps) => {
         blockId: 'endTime',
       }).element(
         ((x) =>
-          props.userTimeNow
+          userTimeNow
             ? x.initialTime(
                 clockString(
-                  (props.userTimeNow.getHours() +
-                    DEFAULT_RESERVATION_PERIOD_HRS) %
+                  (userTimeNow.getHours() + DEFAULT_RESERVATION_PERIOD_HRS) %
                     24,
-                  props.userTimeNow.getMinutes(),
+                  userTimeNow.getMinutes(),
                 ),
               )
             : x)(
@@ -126,9 +129,9 @@ export const FreeVehicleQueryBlocks = (props: FreeVehicleQueryBlocksProps) => {
           ),
         ),
       ),
-      props.error
+      params.error
         ? Blocks.Section({
-            text: `⚠️ \`\`\`${props.error}\`\`\` ⚠️`,
+            text: `⚠️ \`\`\`${params.error}\`\`\` ⚠️`,
           })
         : null,
     )

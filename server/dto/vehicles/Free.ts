@@ -7,6 +7,7 @@ import {
   MinDate,
   ValidationOptions,
   registerDecorator,
+  MaxDate,
 } from 'class-validator';
 
 const PeriodExtendsLessThanRange = (
@@ -77,6 +78,9 @@ export class Free {
   @Type(() => Date)
   @MinDate(new Date(), {
     message: 'End date must be after current time',
+  })
+  @MaxDate(new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), {
+    message: 'End date must be less than 3 days in the future',
   })
   end: Date;
 
