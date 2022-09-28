@@ -5,6 +5,8 @@ interface authContext {
   setSignedIn: (signedIn: boolean) => void;
   sessionOver: Date;
   setSessionOver: (expiry: Date) => void;
+  userId: number | null;
+  setUserId: (newUserId: number | null) => void;
 }
 
 const AuthContext = createContext<authContext>({
@@ -12,6 +14,8 @@ const AuthContext = createContext<authContext>({
   setSignedIn: () => null,
   sessionOver: new Date(),
   setSessionOver: () => null,
+  userId: null,
+  setUserId: () => null,
 });
 
 export const useAuthContext = () => useContext(AuthContext);
@@ -19,6 +23,13 @@ export const useAuthContext = () => useContext(AuthContext);
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [signedIn, setSignedIn] = useState<boolean>(false);
   const [sessionOver, setSessionOver] = useState<Date>(new Date());
+  const [userId, setUserId] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (userId) {
+      localStorage.setItem('userId', userId.toString());
+    }
+  }, [userId]);
 
   useEffect(() => {
     let expiry: string | null | Date = localStorage.getItem('expiry');
@@ -27,6 +38,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (Date.now() < expiry.getTime()) {
         setSignedIn(true);
         setSessionOver(expiry);
+
+        ((id) => {
+          if (id) {
+            setUserId(parseInt(id, 10));
+          }
+        })(localStorage.getItem('userId'));
       }
     }
   }, []);
@@ -52,7 +69,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <AuthContext.Provider
-      value={{ signedIn, setSignedIn, sessionOver, setSessionOver }}
+      value={{
+        signedIn,
+        setSignedIn,
+        sessionOver,
+        setSessionOver,
+        userId,
+        setUserId,
+      }}
     >
       {children}
     </AuthContext.Provider>

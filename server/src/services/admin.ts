@@ -1,8 +1,8 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { AdminCreationDto } from 'dto/auth/AdminCreation';
+import { AdminSaveDto } from 'dto/auth/AdminSaveDto';
 import { Admin } from 'src/entities/admin';
-import { Repository } from 'typeorm';
+import { DeleteResult, Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 
@@ -17,11 +17,25 @@ export class AdminService {
     return this.adminRepo.findOne({ where: options });
   }
 
+  async allAdmins(): Promise<Admin[]> {
+    return this.adminRepo.find();
+  }
+
+  async save(admin: AdminSaveDto): Promise<Admin> {
+    const salt = await bcrypt.genSalt();
+    const password = await bcrypt.hash(admin.password, salt);
+
+    admin.username = admin.username.toLowerCase();
+    admin.password = password;
+
+    return await this.adminRepo.save(admin);
+  }
+
   async validateAdmin(
     username: string,
     password: string,
   ): Promise<Admin | null> {
-    const admin = await this.findOne({ username });
+    const admin = await this.findOne({ username: username.toLowerCase() });
     if (!admin || !(await bcrypt.compare(password, admin.password))) {
       return null;
     }
@@ -38,16 +52,20 @@ export class AdminService {
     };
   }
 
-  async create(adminRegistration: AdminCreationDto): Promise<Admin> {
+  async create(adminRegistration: AdminSaveDto): Promise<Admin> {
     if (!(await this.findOne({ username: adminRegistration.username }))) {
       const salt = await bcrypt.genSalt();
       const password = await bcrypt.hash(adminRegistration.password, salt);
 
       const admin = new Admin();
-      admin.username = adminRegistration.username;
+      admin.username = adminRegistration.username.toLowerCase();
       admin.password = password;
       return this.adminRepo.save(admin);
     }
     throw new BadRequestException('Username already taken');
+  }
+
+  async remove(admin: Admin): Promise<DeleteResult> {
+    return this.adminRepo.delete(admin.id);
   }
 }

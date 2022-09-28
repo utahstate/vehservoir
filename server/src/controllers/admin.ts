@@ -1,17 +1,23 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  HttpException,
+  HttpStatus,
+  Param,
+  Patch,
   Post,
   Request,
   Res,
   UseGuards,
 } from '@nestjs/common';
-import { AdminCreationDto } from 'dto/auth/AdminCreation';
+import { AdminSaveDto } from 'dto/auth/AdminSaveDto';
 import { JwtAuthGuard } from 'src/auth/jwt_auth';
 import { LocalAuthGuard } from 'src/auth/local_auth';
 import { Admin } from 'src/entities/admin';
 import { AdminService } from 'src/services/admin';
+import { DeleteResult } from 'typeorm';
 
 @Controller()
 export class AdminController {
@@ -19,7 +25,7 @@ export class AdminController {
 
   @UseGuards(JwtAuthGuard)
   @Post('/api/admin/register')
-  async create(@Body() adminRegistration: AdminCreationDto): Promise<Admin> {
+  async create(@Body() adminRegistration: AdminSaveDto): Promise<Admin> {
     const admin = await this.adminService.create(adminRegistration);
     delete admin.password;
     return admin;
@@ -39,6 +45,7 @@ export class AdminController {
 
     return {
       message: 'Login successful',
+      id: req.user.id,
       expiration: new Date(new Date().getTime() + twelveHours),
     };
   }
@@ -53,5 +60,50 @@ export class AdminController {
   @Get('/api/admin/profile')
   getProfile(@Request() req: any) {
     return { username: req.user.username, id: req.user.sub };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('/api/admins')
+  async getAdmins() {
+    const noPasswordAdmins = (await this.adminService.allAdmins()).map(
+      ({ password, ...rest }) => rest,
+    );
+    return noPasswordAdmins;
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('/api/admin/:id')
+  async updateAdmin(
+    @Param('id') id: number,
+    @Body() adminPayload: AdminSaveDto,
+  ) {
+    const admin = await this.adminService.findOne({ id });
+
+    if (!admin) {
+      throw new HttpException('Admin was not found', HttpStatus.NOT_FOUND);
+    }
+
+    if (adminPayload.username) {
+      admin.username = adminPayload.username;
+    }
+    if (adminPayload.password) {
+      admin.password = adminPayload.password;
+    }
+
+    const result = await this.adminService.save(admin);
+    delete result.password;
+    return result;
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete('/api/admin/:id')
+  async deleteAdmin(@Param('id') id: number): Promise<DeleteResult> {
+    const admin = await this.adminService.findOne({ id });
+
+    if (!admin) {
+      throw new HttpException('Admin was not found', HttpStatus.NOT_FOUND);
+    }
+
+    return await this.adminService.remove(admin);
   }
 }
