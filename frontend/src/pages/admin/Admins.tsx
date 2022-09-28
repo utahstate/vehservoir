@@ -47,7 +47,7 @@ const getAdmins = async () => {
   return fetch('/api/admins', {
     method: 'GET',
     credentials: 'include',
-  }).then((vehicleJsonCollection) => vehicleJsonCollection.json());
+  }).then((adminJsonCollection) => adminJsonCollection.json());
 };
 
 const Admins: React.FC = (): JSX.Element => {
@@ -115,63 +115,56 @@ const Admins: React.FC = (): JSX.Element => {
               <th>ID</th>
               <th>Username</th>
               <th>Creation Date</th>
-              {signedIn ? <th>Actions</th> : <></>}
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {admins.length ? (
-              admins.map(({ id, username, creationDate }) => (
-                <tr key={id}>
-                  <td>{id}</td>
-                  <td>{username}</td>
-                  <td>{new Date(creationDate).toLocaleString()}</td>
-                  {signedIn ? (
-                    <td>
-                      <div
-                        style={{
-                          display: 'flex',
-                          justifyContent: 'flex-start',
-                          gap: '1rem',
-                        }}
-                      >
-                        <a
-                          onClick={() => {
-                            setSelectedAction('update');
-                            setCurrentAdminData({
-                              id,
-                              username,
-                              password: '',
-                              creationDate,
-                            });
-                            setModalIsOpen(!modalIsOpen);
-                          }}
-                        >
-                          Edit
-                        </a>
-                        <a
-                          onClick={() => {
-                            setSelectedAction('remove');
-                            setCurrentAdminData({
-                              id,
-                              username,
-                              password: '',
-                              creationDate,
-                            });
-                            setModalIsOpen(!modalIsOpen);
-                          }}
-                        >
-                          Delete
-                        </a>
-                      </div>
-                    </td>
-                  ) : (
-                    <></>
-                  )}
-                </tr>
-              ))
-            ) : (
-              <></>
-            )}
+            {admins.map(({ id, username, creationDate }) => (
+              <tr key={id}>
+                <td>{id}</td>
+                <td>{username}</td>
+                <td>{new Date(creationDate).toLocaleString()}</td>
+
+                <td>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'flex-start',
+                      gap: '1rem',
+                    }}
+                  >
+                    <a
+                      onClick={() => {
+                        setSelectedAction('update');
+                        setCurrentAdminData({
+                          id,
+                          username,
+                          password: '',
+                          creationDate,
+                        });
+                        setModalIsOpen(!modalIsOpen);
+                      }}
+                    >
+                      Edit
+                    </a>
+                    <a
+                      onClick={() => {
+                        setSelectedAction('remove');
+                        setCurrentAdminData({
+                          id,
+                          username,
+                          password: '',
+                          creationDate,
+                        });
+                        setModalIsOpen(!modalIsOpen);
+                      }}
+                    >
+                      Delete
+                    </a>
+                  </div>
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>

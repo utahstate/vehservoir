@@ -66,6 +66,6 @@ export class AdminService {
   }
 
   async remove(admin: Admin): Promise<DeleteResult> {
-    return await this.adminRepo.delete(admin.id);
+    return this.adminRepo.delete(admin.id);
   }
 }

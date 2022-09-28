@@ -5,7 +5,7 @@ export class AdminSaveDto {
   @IsString()
   username: string;
 
-  @MinLength(5)
+  @MinLength(8)
   @IsString()
   password: string;
 }

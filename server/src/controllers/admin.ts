@@ -83,10 +83,10 @@ export class AdminController {
       throw new HttpException('Admin was not found', HttpStatus.NOT_FOUND);
     }
 
-    if (admin.username) {
+    if (adminPayload.username) {
       admin.username = adminPayload.username;
     }
-    if (admin.password) {
+    if (adminPayload.password) {
       admin.password = adminPayload.password;
     }
 
@@ -104,6 +104,6 @@ export class AdminController {
       throw new HttpException('Admin was not found', HttpStatus.NOT_FOUND);
     }
 
-    return this.adminService.remove(admin);
+    return await this.adminService.remove(admin);
   }
 }
