@@ -11,8 +11,22 @@ import { applyTimezoneOffset, toTimeZone } from 'src/utils/dates';
 import { ReserveVehicleBlock } from 'src/slack_blocks/ReserveVehicleBlocks';
 import { Reservation } from 'src/entities/reservation';
 import { SlackRequestService } from 'src/services/slack_request';
+import { MoreThanOrEqual } from 'typeorm';
+import { UnreserveBlocks } from 'src/slack_blocks/UnreserveBlocks';
 
 const formatErrors = (errors) => errors.map((x) => `* ${x}`).join('\n');
+
+export interface UnreserveViewState {
+  reservations: {
+    reservations: {
+      type: 'checkboxes';
+      selected_options: {
+        text: any;
+        value: string;
+      }[];
+    };
+  };
+}
 
 export interface ReservationFindAvailableViewState {
   type: {
@@ -45,6 +59,7 @@ export interface ReservationRequestViewState {
 export enum ReserveModal {
   FINDING_VEHICLE,
   RESERVING_VEHICLE,
+  UNRESERVING_VEHICLE,
 }
 
 export interface ViewState {
@@ -70,6 +85,46 @@ export class SlackController {
     private slackRequestService: SlackRequestService,
   ) {
     this.viewStates = {};
+  }
+
+  @Post('/api/slack/unreserve')
+  async unreserveCommand(@Body() req): Promise<string> {
+    const external_id = uuidv4();
+
+    const user = await this.getUserDetails(req.user_id);
+
+    const { reservations, errors } =
+      await this.getUserCurrentReservationsOrErrors(user);
+    if (errors) {
+      return '`' + formatErrors(errors) + '`';
+    }
+
+    this.viewStates[external_id] = {
+      modal: ReserveModal.UNRESERVING_VEHICLE,
+      params: {
+        reservations,
+      },
+      user,
+    };
+
+    axios.post(
+      'https://slack.com/api/views.open',
+      {
+        trigger_id: req.trigger_id,
+        view: JSON.stringify({
+          external_id,
+          notify_on_close: true,
+          ...UnreserveBlocks(this.viewStates[external_id]),
+        }),
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${this.configService.get('SLACK_TOKEN')}`,
+          'Content-Type': 'application/json',
+        },
+      },
+    );
+    return 'Please fill out the form';
   }
 
   @Post('/api/slack/reserve')
@@ -133,7 +188,7 @@ export class SlackController {
             user,
             `Thanks, ${user.real_name}! We got your ${
               reservation.vehicle.name
-            } ${(
+            }, ${(
               (reservation.end.getTime() - reservation.start.getTime()) /
               (60 * 60 * 1000)
             ).toFixed(2)} hour reservation starting ${toTimeZone(
@@ -189,6 +244,14 @@ export class SlackController {
             ...ReserveVehicleBlock(this.viewStates[external_id]),
           }),
         };
+      } else if (
+        this.viewStates[external_id].modal === ReserveModal.UNRESERVING_VEHICLE
+      ) {
+        const { errors } = await this.removeReservationsAndGetErrors(
+          bodyPayload,
+          user,
+        );
+        console.log(errors);
       }
     }
   }
@@ -220,6 +283,61 @@ export class SlackController {
       })
     ).data.user;
     return { tz, tz_offset, id, real_name };
+  }
+
+  private async getUserCurrentReservationsOrErrors(user: SlackUser) {
+    const reservations = await this.reservationService.findReservationsBy(
+      {
+        end: MoreThanOrEqual(new Date()),
+        request: {
+          slackUserId: user.id,
+        },
+      },
+      { request: true, vehicle: true },
+    );
+
+    if (!reservations.length) {
+      return {
+        errors: [
+          'You have no future or current reservations. Use /reserve to make one!',
+        ],
+      };
+    }
+
+    return { reservations };
+  }
+
+  private async removeReservationsAndGetErrors(
+    bodyPayload: any,
+    user: SlackUser,
+  ) {
+    const unreserveValues = bodyPayload.view.state.values as UnreserveViewState;
+    const errors = [];
+    await Promise.all(
+      unreserveValues.reservations.reservations.selected_options.map(
+        async ({ value: reservationId }) =>
+          this.reservationService
+            .findOne(
+              {
+                id: reservationId,
+              },
+              { request: true },
+            )
+            .then((reservation) => {
+              if (!reservation) {
+                errors.push(
+                  `Could not find reservation with id ${reservationId}`,
+                );
+                return;
+              }
+              if (reservation.request?.slackUserId === user.id) {
+                return this.reservationService.remove(reservation);
+              }
+              errors.push(`${reservationId} does not belong to ${user.id}`);
+            }),
+      ),
+    );
+    return { errors };
   }
 
   private async makeReservationOrErrors(bodyPayload: any, user: SlackUser) {
