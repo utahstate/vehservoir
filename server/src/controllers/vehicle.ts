@@ -6,7 +6,7 @@ import {
   HttpException,
   HttpStatus,
   Param,
-  Patch,
+  Put,
   Post,
   Query,
   UseGuards,
@@ -52,22 +52,6 @@ export class VehicleController {
     return vehicle;
   }
 
-  private async getOrCreateTypeFromBodyOrFail(
-    vehiclePayload: Partial<VehicleCreationDto>,
-  ): Promise<VehicleType> {
-    const type = await this.vehicleService.findOrCreateTypeName(
-      vehiclePayload.type.name,
-      vehiclePayload.type.new,
-    );
-    if (!type) {
-      throw new HttpException(
-        `Vehicle type ${vehiclePayload.type.name} cannot be found (create it with new: true).`,
-        HttpStatus.NOT_FOUND,
-      );
-    }
-    return type;
-  }
-
   @UseGuards(JwtAuthGuard)
   @Post('/api/vehicle')
   async createVehicle(
@@ -81,10 +65,10 @@ export class VehicleController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Patch('/api/vehicle/:id')
+  @Put('/api/vehicle/:id')
   async updateVehicle(
     @Param('id') id: number,
-    @Body() vehiclePayload: Partial<VehicleCreationDto>,
+    @Body() vehiclePayload: VehicleCreationDto,
   ): Promise<Vehicle> {
     const vehicle = await this.vehicleService.findVehicleBy({ id });
     if (!vehicle) {
@@ -144,5 +128,21 @@ export class VehicleController {
       ),
       query.periodSeconds,
     );
+  }
+
+  private async getOrCreateTypeFromBodyOrFail(
+    vehiclePayload: VehicleCreationDto,
+  ): Promise<VehicleType> {
+    const type = await this.vehicleService.findOrCreateTypeName(
+      vehiclePayload.type.name,
+      vehiclePayload.type.new,
+    );
+    if (!type) {
+      throw new HttpException(
+        `Vehicle type ${vehiclePayload.type.name} cannot be found (create it with new: true).`,
+        HttpStatus.NOT_FOUND,
+      );
+    }
+    return type;
   }
 }

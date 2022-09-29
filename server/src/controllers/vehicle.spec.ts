@@ -339,27 +339,14 @@ describe('VehicleController', () => {
       });
     });
 
-    it('should update partial fields on a vehicle', async () => {
-      const vehicle = await vehicleController.getVehicle(1);
-
-      await vehicleController.updateVehicle(1, {
-        name: 'Bicycle 2',
-      });
-
-      expect(vehicle).toEqual({
-        id: vehicle.id,
-        name: 'Bicycle 2',
-        type: {
-          id: vehicleTypeGlobalId,
-          name: 'bike',
-        },
-      });
-    });
-
     it('should fail to update non existing vehicles', async () => {
       try {
         await vehicleController.updateVehicle(999, {
           name: 'Bicycle 2',
+          type: {
+            new: false,
+            name: 'bike',
+          },
         });
       } catch (e) {
         expect(e).toBeInstanceOf(HttpException);

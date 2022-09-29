@@ -6,14 +6,15 @@ import {
   HttpException,
   HttpStatus,
   Param,
-  Patch,
   Post,
   UseGuards,
+  Query,
+  Put,
 } from '@nestjs/common';
 import { ReservationService } from 'src/services/reservation';
 import { Reservation } from 'src/entities/reservation';
-import { ReservationDto } from 'dto/reservations/Creation';
-import { DeleteResult } from 'typeorm';
+import { ReservationDto } from 'dto/reservations/Reservation';
+import { Between, DeleteResult } from 'typeorm';
 import { VehicleService } from 'src/services/vehicle';
 import { Vehicle } from 'src/entities/vehicle';
 import { JwtAuthGuard } from 'src/auth/jwt_auth';
@@ -41,7 +42,7 @@ export class ReservationController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Patch('/api/reservation/:id')
+  @Put('/api/reservation/:id')
   async update(
     @Param('id') id: number,
     @Body() reservationPayload: ReservationDto,
@@ -53,6 +54,7 @@ export class ReservationController {
 
     reservation.vehicle = await this.validatePayloadAndGetVehicleOrFail(
       reservationPayload,
+      [reservation],
     );
     reservation.start = reservationPayload.start;
     reservation.end = reservationPayload.end;
@@ -81,6 +83,7 @@ export class ReservationController {
 
   private async validatePayloadAndGetVehicleOrFail(
     reservationPayload: ReservationDto,
+    withIgnoreReservations: Reservation[] = [],
   ): Promise<Vehicle> {
     if (
       reservationPayload.start.getTime() >= reservationPayload.end.getTime()
@@ -104,11 +107,31 @@ export class ReservationController {
         vehicle,
         reservationPayload.start,
         reservationPayload.end,
+        withIgnoreReservations,
       ))
     ) {
       throw new HttpException('Vehicle not available', HttpStatus.BAD_REQUEST);
     }
 
     return vehicle;
+  }
+
+  @Get('/api/reservations/:vehicleId')
+  async getReservationsByVehicleId(
+    @Param('vehicleId') vehicleId: number,
+    @Query('start') start: Date,
+    @Query('end') end: Date,
+  ): Promise<Reservation[]> {
+    if (!(start && end) || start.getTime() >= end.getTime()) {
+      throw new HttpException('Invalid Dates', HttpStatus.BAD_REQUEST);
+    }
+
+    return await this.reservationService.findReservationsBy(
+      {
+        vehicle: { id: vehicleId },
+        start: Between(start, end),
+      },
+      { vehicle: true, request: true },
+    );
   }
 }
