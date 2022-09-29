@@ -77,7 +77,7 @@ export interface SlackUser {
 
 @Controller()
 export class SlackController {
-  private viewStates: Record<string, ViewState>; // Preserves Slack modal state per view
+  private viewStates: Record<string, ViewState>; // Preserves Slack modal state per view in memory
   constructor(
     private reservationService: ReservationService,
     private vehicleService: VehicleService,
@@ -85,6 +85,36 @@ export class SlackController {
     private slackRequestService: SlackRequestService,
   ) {
     this.viewStates = {};
+  }
+
+  @Post('/api/slack/reservations')
+  async userReservationsCommand(@Body() req): Promise<string> {
+    const user = await this.getUserDetails(req.user_id);
+
+    const { reservations, errors } =
+      await this.getUserCurrentReservationsOrErrors(user);
+    if (errors) {
+      return '```' + formatErrors(errors) + '```';
+    }
+
+    return (
+      '```' +
+      'Your reservations:\n' +
+      reservations
+        .sort((a, b) => b.start.getTime() - a.start.getTime())
+        .map(
+          (reservation) =>
+            reservation.vehicle.name +
+            ' | ' +
+            [reservation.start, reservation.end]
+              .map((date) =>
+                date.toLocaleString('en-US', { timeZone: user.tz }),
+              )
+              .join(' - '),
+        )
+        .join('\n') +
+      '```'
+    );
   }
 
   @Post('/api/slack/unreserve')
@@ -251,7 +281,22 @@ export class SlackController {
           bodyPayload,
           user,
         );
-        console.log(errors);
+
+        if (errors) {
+          this.viewStates[external_id].params.error = formatErrors(errors);
+          return {
+            response_action: 'update',
+            view: JSON.stringify({
+              external_id,
+              notify_on_close: true,
+              ...UnreserveBlocks(this.viewStates[external_id]),
+            }),
+          };
+        }
+        delete this.viewStates[external_id];
+        return {
+          response_action: 'clear',
+        };
       }
     }
   }

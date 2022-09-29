@@ -5,6 +5,7 @@ import { Reservation } from 'src/entities/reservation';
 interface ReservationsBlocksProps {
   params: {
     reservations: Reservation[];
+    error?: string;
   };
   user: {
     tz: string;
@@ -41,6 +42,12 @@ export const UnreserveBlocks = ({ params, user }: ReservationsBlocksProps) => {
             ),
         ),
       ),
+
+      params.error
+        ? Blocks.Section({
+            text: `⚠️ \`\`\`${params.error}\`\`\` ⚠️`,
+          })
+        : null,
     )
     .buildToObject();
 };
