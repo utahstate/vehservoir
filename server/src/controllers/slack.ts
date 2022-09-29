@@ -186,12 +186,12 @@ export class SlackController {
         if (!errors && reservation) {
           this.sendUserMessage(
             user,
-            `Thanks, ${user.real_name}! We got your ${
+            `Thanks, ${user.real_name}! We have confirmed your ${
               reservation.vehicle.name
             }, ${(
               (reservation.end.getTime() - reservation.start.getTime()) /
               (60 * 60 * 1000)
-            ).toFixed(2)} hour reservation starting ${toTimeZone(
+            ).toFixed(2)} hour reservation, starting at ${toTimeZone(
               reservation.start,
               user.tz,
             ).toLocaleString()}`,
