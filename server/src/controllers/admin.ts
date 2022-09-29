@@ -65,10 +65,9 @@ export class AdminController {
   @UseGuards(JwtAuthGuard)
   @Get('/api/admins')
   async getAdmins() {
-    const noPasswordAdmins = (await this.adminService.allAdmins()).map(
+    return (await this.adminService.allAdmins()).map(
       ({ password, ...rest }) => rest,
     );
-    return noPasswordAdmins;
   }
 
   @UseGuards(JwtAuthGuard)

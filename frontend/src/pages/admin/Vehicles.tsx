@@ -26,7 +26,7 @@ const actions: Record<string, (d: VehicleData) => Promise<Response>> = {
     const { id, ...dataToSend } = currentVehicleData;
 
     return fetch(`/api/vehicle/${id}`, {
-      method: 'PATCH',
+      method: 'PUT',
       headers: {
         'Content-type': 'application/json',
       },

@@ -4,6 +4,7 @@ import { Vehicle } from 'src/entities/vehicle';
 import { DeleteResult, Repository } from 'typeorm';
 import { VehicleType } from 'src/entities/vehicle_type';
 import { subtractRanges } from 'src/utils/dates';
+import { Reservation } from 'src/entities/reservation';
 
 export interface VehicleAvailability {
   vehicle: Vehicle;
@@ -112,6 +113,7 @@ export class VehicleService {
     options: Record<string, any>,
     start: Date,
     end: Date,
+    ignoreReservationsIds: Set<number> = new Set(),
   ): Promise<Map<number, VehicleAvailability>> {
     return this.getVehiclesWithReservationOverlappingOrNone(
       options,
@@ -127,7 +129,9 @@ export class VehicleService {
           vehicle,
           availability: subtractRanges(
             [start, end],
-            vehicle?.reservations.map(({ start, end }) => [start, end]),
+            vehicle?.reservations
+              .filter(({ id }) => !ignoreReservationsIds.has(id))
+              .map(({ start, end }) => [start, end]),
           ),
         });
       }
@@ -160,10 +164,17 @@ export class VehicleService {
     vehicle: Vehicle,
     start: Date,
     end: Date,
+    withIgnoringReservations: Reservation[] = [],
   ): Promise<boolean> {
     const availability = (
-      await this.vehicleFreePeriodsBy(vehicle, start, end)
+      await this.vehicleFreePeriodsBy(
+        vehicle,
+        start,
+        end,
+        new Set(withIgnoringReservations.map((reservation) => reservation.id)),
+      )
     ).get(vehicle.id)?.availability;
+
     return (
       !!availability &&
       !!availability.length &&

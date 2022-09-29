@@ -115,7 +115,7 @@ const Admins: React.FC = (): JSX.Element => {
               <th>ID</th>
               <th>Username</th>
               <th>Creation Date</th>
-              <th>Actions</th>
+              {signedIn ? <th>Actions</th> : <></>}
             </tr>
           </thead>
           <tbody>
