@@ -10,4 +10,7 @@ export class Request {
 
   @Column({ nullable: false })
   userName: string;
+
+  @Column({ nullable: false, default: false })
+  slackReminderSent: boolean;
 }

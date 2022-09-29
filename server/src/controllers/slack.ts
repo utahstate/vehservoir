@@ -11,10 +11,9 @@ import { applyTimezoneOffset, toTimeZone } from 'src/utils/dates';
 import { ReserveVehicleBlock } from 'src/slack_blocks/ReserveVehicleBlocks';
 import { Reservation } from 'src/entities/reservation';
 import { SlackRequestService } from 'src/services/slack_request';
-import { MoreThanOrEqual } from 'typeorm';
+import { LessThanOrEqual, MoreThan, MoreThanOrEqual } from 'typeorm';
 import { UnreserveBlocks } from 'src/slack_blocks/UnreserveBlocks';
-
-const formatErrors = (errors) => errors.map((x) => `* ${x}`).join('\n');
+import { Cron } from '@nestjs/schedule';
 
 export interface UnreserveViewState {
   reservations: {
@@ -75,6 +74,17 @@ export interface SlackUser {
   tz: string;
 }
 
+const REMIND_MESSAGE_USER_THRESHOLD_SEC = 5 * 60;
+const formatErrors = (errors: string[]) =>
+  errors.map((x) => `* ${x}`).join('\n');
+
+export const formatReservation = (reservation: Reservation, timeZone: string) =>
+  reservation.vehicle.name +
+  ' | ' +
+  [reservation.start, reservation.end]
+    .map((date) => date.toLocaleString('en-US', { timeZone }))
+    .join(' - ');
+
 @Controller()
 export class SlackController {
   private viewStates: Record<string, ViewState>; // Preserves Slack modal state per view in memory
@@ -85,6 +95,51 @@ export class SlackController {
     private slackRequestService: SlackRequestService,
   ) {
     this.viewStates = {};
+  }
+
+  @Cron('*/30 * * * * *')
+  async remindUsers() {
+    const sendMessageMinDate = new Date(
+      new Date().setSeconds(REMIND_MESSAGE_USER_THRESHOLD_SEC),
+    );
+    const reservationsToRemind =
+      await this.reservationService.findReservationsBy(
+        {
+          start: LessThanOrEqual(sendMessageMinDate),
+          end: MoreThan(new Date()),
+          request: {
+            slackReminderSent: false,
+          },
+        },
+        { request: true, vehicle: true },
+      );
+
+    reservationsToRemind.map((reservation) => {
+      const {
+        request: { userName, slackUserId },
+        vehicle,
+      } = reservation;
+
+      const minuteDifference = Math.ceil(
+        (reservation.start.getTime() - Date.now()) / (1000 * 60),
+      );
+
+      let message;
+      if (minuteDifference < 0) {
+        message = `Hello ${userName}, just following up on your reservation about ${Math.abs(
+          minuteDifference,
+        )} minute(s) ago for ${vehicle.name}.`;
+      } else {
+        message = `Hello ${userName}, just reminding you of your reservation coming up in about ${minuteDifference} minute(s) for ${vehicle.name}.`;
+      }
+      message +=
+        '\nIf you no longer need this reservation, use the `/unreserve` dialog.';
+
+      this.sendUserMessage({ id: slackUserId }, message).then(() => {
+        reservation.request.slackReminderSent = true;
+        this.slackRequestService.save(reservation.request);
+      });
+    });
   }
 
   @Post('/api/slack/reservations')
@@ -102,16 +157,7 @@ export class SlackController {
       'Your reservations:\n' +
       reservations
         .sort((a, b) => b.start.getTime() - a.start.getTime())
-        .map(
-          (reservation) =>
-            reservation.vehicle.name +
-            ' | ' +
-            [reservation.start, reservation.end]
-              .map((date) =>
-                date.toLocaleString('en-US', { timeZone: user.tz }),
-              )
-              .join(' - '),
-        )
+        .map((r) => formatReservation(r, user.tz))
         .join('\n') +
       '```'
     );
@@ -201,10 +247,11 @@ export class SlackController {
 
     if (bodyPayload.type === 'view_submission') {
       const external_id = uuidv4();
+      // Refresh the view state for the to-be-sent view
       const oldState = this.viewStates[oldExternalId];
       this.viewStates[external_id] = { ...oldState };
-      const user = this.viewStates[external_id].user;
       delete this.viewStates[oldExternalId];
+      const user = this.viewStates[external_id].user;
 
       if (
         this.viewStates[external_id].modal === ReserveModal.RESERVING_VEHICLE
@@ -224,7 +271,7 @@ export class SlackController {
             ).toFixed(2)} hour reservation, starting at ${toTimeZone(
               reservation.start,
               user.tz,
-            ).toLocaleString()}`,
+            ).toLocaleString()}.\nCheck your other reservations with the \`/reservations\` command`,
           );
           delete this.viewStates[oldExternalId];
           return {
@@ -282,7 +329,7 @@ export class SlackController {
           user,
         );
 
-        if (errors) {
+        if (errors.length) {
           this.viewStates[external_id].params.error = formatErrors(errors);
           return {
             response_action: 'update',
@@ -301,11 +348,11 @@ export class SlackController {
     }
   }
 
-  private async sendUserMessage(user: SlackUser, text: string) {
+  private async sendUserMessage({ id }: Partial<SlackUser>, text: string) {
     await axios.post(
       'https://slack.com/api/chat.postMessage',
       {
-        channel: user.id,
+        channel: id,
         text,
       },
       {

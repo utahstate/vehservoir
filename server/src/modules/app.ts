@@ -8,9 +8,11 @@ import { SlackModule } from './slack';
 import { ReservationModule } from './reservation';
 import { AdminModule } from './admin';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
     ConfigModule.forRoot({
       isGlobal: true,
     }),

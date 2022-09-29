@@ -1,4 +1,5 @@
 import { Modal, Blocks, Elements, Bits } from 'slack-block-builder';
+import { formatReservation } from 'src/controllers/slack';
 
 import { Reservation } from 'src/entities/reservation';
 
@@ -29,14 +30,7 @@ export const UnreserveBlocks = ({ params, user }: ReservationsBlocksProps) => {
             .sort((a, b) => b.start.getTime() - a.start.getTime())
             .map((reservation) =>
               Bits.Option({
-                text:
-                  reservation.vehicle.name +
-                  ' | ' +
-                  [reservation.start, reservation.end]
-                    .map((date) =>
-                      date.toLocaleString('en-US', { timeZone: user.tz }),
-                    )
-                    .join(' - '),
+                text: formatReservation(reservation, user.tz),
                 value: reservation.id.toString(),
               }),
             ),

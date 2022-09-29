@@ -3,6 +3,7 @@ export const subtractRanges = (
   subtrahend: [Date, Date],
   minuends: [Date, Date][],
 ): [Date, Date][] => {
+  console.log(subtrahend, minuends);
   if (
     !(
       subtrahend[0].getTime() <= subtrahend[1].getTime() &&
