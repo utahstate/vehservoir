@@ -5,11 +5,7 @@ export class AdminSaveDto {
   @IsString()
   username: string;
 
-<<<<<<< HEAD
   @MinLength(8)
-=======
-  @MinLength(5)
->>>>>>> 2c5efa2 (New pages moment (vehicle actions, whole admin management page) :chad:)
   @IsString()
   password: string;
 }
