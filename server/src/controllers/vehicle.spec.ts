@@ -1,10 +1,11 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { Test, TestingModule } from '@nestjs/testing';
 import { Vehicle } from 'src/entities/vehicle';
 import { VehicleType } from 'src/entities/vehicle_type';
 import { VehicleAvailability, VehicleService } from 'src/services/vehicle';
 import { VehicleController } from './vehicle';
 import { VehicleCreationDto } from 'dto/vehicles/Creation';
-import { HttpException, NotFoundException } from '@nestjs/common';
+import { HttpException } from '@nestjs/common';
 
 // Firstly mock the VehicleService database wrapper and create dummy data
 let vehicleTypeGlobalId = 0;
@@ -215,7 +216,7 @@ describe('VehicleController', () => {
           type: 'Does not exist',
           start: new Date(),
           end: new Date(),
-          period: 0,
+          periodSeconds: 0,
         });
       } catch (e) {
         expect(e).toBeInstanceOf(HttpException);
@@ -231,7 +232,7 @@ describe('VehicleController', () => {
           type: 'Minivan',
           start,
           end,
-          period: 3600 * 1000 + 1,
+          periodSeconds: 3600 * 1000 + 1,
         });
       } catch (e) {
         expect(e).toBeInstanceOf(HttpException);
@@ -246,7 +247,7 @@ describe('VehicleController', () => {
         start,
         end,
         type: 'Golf Cart',
-        period: 60 * 60,
+        periodSeconds: 60 * 60,
       });
 
       expect(vehicleAvailabilities).toEqual([

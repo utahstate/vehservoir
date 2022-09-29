@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DeleteResult, Repository } from 'typeorm';
+import { DeleteResult, LessThanOrEqual, Repository } from 'typeorm';
 import { Reservation } from 'src/entities/reservation';
+import { Cron } from '@nestjs/schedule';
+
+const EXPIRED_RESERVATION_THRESHOLD_SEC = 60 * 60 * 24 * 20; // Twenty days
 
 @Injectable()
 export class ReservationService {
@@ -9,6 +12,26 @@ export class ReservationService {
     @InjectRepository(Reservation)
     private reservationRepo: Repository<Reservation>,
   ) {}
+
+  @Cron('0 0 * * * *')
+  async removeExpiredReservations() {
+    const expiredDate = new Date(
+      new Date().setSeconds(-EXPIRED_RESERVATION_THRESHOLD_SEC),
+    );
+    const expiredReservations = await this.findReservationsBy(
+      {
+        end: LessThanOrEqual(expiredDate),
+      },
+      {},
+    );
+    expiredReservations.map((reservation) => {
+      this.remove(reservation).then((x) =>
+        console.log(
+          `Reservation ${x} age was greater than ${expiredDate.toLocaleString()} and removed`,
+        ),
+      );
+    });
+  }
 
   async allReservations(): Promise<Reservation[]> {
     return this.reservationRepo.find({
@@ -31,8 +54,12 @@ export class ReservationService {
     });
   }
 
-  async findOne(options: Record<string, any>): Promise<Reservation> {
+  async findOne(
+    options: Record<string, any>,
+    relations: Record<string, boolean> = null,
+  ): Promise<Reservation> {
     return this.reservationRepo.findOne({
+      relations,
       where: options,
     });
   }

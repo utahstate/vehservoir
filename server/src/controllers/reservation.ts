@@ -8,6 +8,7 @@ import {
   Param,
   Patch,
   Post,
+  UseGuards,
 } from '@nestjs/common';
 import { ReservationService } from 'src/services/reservation';
 import { Reservation } from 'src/entities/reservation';
@@ -15,6 +16,7 @@ import { ReservationDto } from 'dto/reservations/Creation';
 import { DeleteResult } from 'typeorm';
 import { VehicleService } from 'src/services/vehicle';
 import { Vehicle } from 'src/entities/vehicle';
+import { JwtAuthGuard } from 'src/auth/jwt_auth';
 
 @Controller()
 export class ReservationController {
@@ -28,6 +30,7 @@ export class ReservationController {
     return await this.reservationService.allReservations();
   }
 
+  @UseGuards(JwtAuthGuard)
   @Delete('/api/reservation/:id')
   async remove(@Param('id') id: number): Promise<DeleteResult> {
     const reservation = await this.reservationService.findOne({ id });
@@ -37,6 +40,7 @@ export class ReservationController {
     return await this.reservationService.remove(reservation);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Patch('/api/reservation/:id')
   async update(
     @Param('id') id: number,
@@ -55,6 +59,7 @@ export class ReservationController {
     return await this.reservationService.save(reservation);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post('/api/reservation')
   async createReservation(
     @Body() reservationPayload: ReservationDto,

@@ -125,45 +125,24 @@ export class VehicleController {
 
   @Get('/api/vehicles/free')
   async free(@Query() query: Free): Promise<VehicleAvailability[]> {
-    if (
-      query.start.getTime() >= query.end.getTime() ||
-      query.period > (query.end.getTime() - query.start.getTime()) * 1000
-    ) {
-      throw new HttpException(
-        'Invalid query parameters: start must be before end, and period must be less than or equal to the difference between end and start.',
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-
     const vehicleType = await this.vehicleService.findTypeBy({
       name: query.type,
     });
 
     if (!vehicleType) {
       throw new HttpException(
-        `No such vehicle type ${query.type} , please create it or check your request`,
+        `No such vehicle type ${query.type}, please create it or check your request`,
         HttpStatus.BAD_REQUEST,
       );
     }
 
-    const vehicleAvailabilities: VehicleAvailability[] = Array.from(
+    return VehicleService.filterAvailabilitiesByPeriodExtension(
       await this.vehicleService.vehicleFreePeriodsBy(
         { type: vehicleType },
         query.start,
         query.end,
       ),
-    ).map(([, vehicleAvailability]) => vehicleAvailability);
-
-    return vehicleAvailabilities
-      .map((vehicleAvailability) => {
-        // Availability is longer or equal to the query period
-        const availability = vehicleAvailability.availability.filter(
-          ([start, end]) =>
-            end.getTime() - start.getTime() >= query.period * 1000,
-        );
-        // Overwrite availability with the filtered one
-        return { ...vehicleAvailability, availability };
-      })
-      .filter((vehicleAvailability) => vehicleAvailability.availability.length);
+      query.periodSeconds,
+    );
   }
 }
