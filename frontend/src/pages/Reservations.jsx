@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import Calendar from '../components/common/calendar/Calendar';
+import { ReservationsCalendar } from '../components/common/calendar/ReservationsCalendar';
 
 const Reservations = () => {
   const [vehicleTypes, setVehicleTypes] = useState([]);
   const [vehicles, setVehicles] = useState([]);
   const [selectedVehicle, setSelectedVehicle] = useState({});
-  const [currentReservation, setCurrentReservation] = useState(null);
 
   const { vehicleId } = useParams();
 
@@ -87,10 +86,7 @@ const Reservations = () => {
           ))}
         </aside>
         <main>
-          <Calendar
-            vehicle={selectedVehicle}
-            setCurrentReservation={setCurrentReservation}
-          />
+          <ReservationsCalendar vehicle={selectedVehicle} />
         </main>
       </div>
     </div>

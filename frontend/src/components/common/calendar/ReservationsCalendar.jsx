@@ -38,7 +38,7 @@ export const reservationActions = {
   },
 };
 
-const Calendar = ({ vehicle }) => {
+export const ReservationsCalendar = ({ vehicle }) => {
   const [initialReservations, setInitialReservations] = useState([]);
   const [dateInfo, setDateInfo] = useState({});
   const [modalIsOpen, setModalIsOpen] = useState(false);
@@ -191,5 +191,3 @@ const Calendar = ({ vehicle }) => {
     </div>
   );
 };
-
-export default Calendar;
