@@ -100,7 +100,7 @@ export class VehicleService {
       .leftJoinAndSelect(
         'vehicle.reservations',
         'reservation',
-        'reservation.start BETWEEN :start and :end OR reservation.end between :start and :end',
+        'NOT((:start < reservation.start AND :end >= reservation.end) AND (reservation.start < :start AND reservation.end >= :end))',
         { start, end },
       )
       .where(options)
