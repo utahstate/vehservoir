@@ -67,7 +67,7 @@ export const ReservationsCalendar = ({ vehicle }) => {
           setInitialReservations(
             reservationsList.map(({ id, start, end, request }) => ({
               id,
-              title: request ? request.slack_user_name : 'Manual',
+              title: request ? request.userName : 'Manual',
               start: start,
               end: end,
             })),
