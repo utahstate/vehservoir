@@ -131,9 +131,7 @@ const Vehicles: FC = () => {
               vehicles.map((vehicle) => (
                 <tr key={vehicle.id}>
                   <td>
-                    <Link to={`/calendar/vehicles/${vehicle.id}`}>
-                      {vehicle.id}
-                    </Link>
+                    <Link to={`/reservations/${vehicle.id}`}>{vehicle.id}</Link>
                   </td>
                   <td>{vehicle.name}</td>
                   <td>{vehicle.type.name}</td>

@@ -14,7 +14,9 @@ export const Router: React.FC = (): JSX.Element => {
       <Route path="/" element={<Dashboard />}>
         <Route path="vehicles" element={<Vehicles />} />
         <Route path="admins" element={signedIn && <Admins />} />
-        <Route path="reservations" element={<Reservations />} />
+        <Route path="reservations" element={<Reservations />}>
+          <Route path=":vehicleId" element={<Reservations />} />
+        </Route>
       </Route>
     </Routes>
   );
