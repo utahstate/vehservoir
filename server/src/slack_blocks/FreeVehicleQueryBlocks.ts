@@ -1,6 +1,6 @@
 import { Modal, Blocks, Elements, Bits } from 'slack-block-builder';
 import { VehicleType } from 'src/entities/vehicle_type';
-import { clockString, toTimeZone } from 'src/utils/dates';
+import { applyTimezoneOffset, clockString, toTimeZone } from 'src/utils/dates';
 
 const DEFAULT_RESERVATION_PERIOD_HRS = 2;
 const DEFAULT_RESERVATION_PERIOD_LENGTH_HRS = Array(10)
@@ -10,6 +10,7 @@ const DEFAULT_RESERVATION_PERIOD_LENGTH_HRS = Array(10)
 interface FreeVehicleQueryBlocksProps {
   user: {
     tz: string;
+    tz_offset: number;
   };
   params: {
     vehicleTypes: VehicleType[];
@@ -47,7 +48,10 @@ export const FreeVehicleQueryBlocks = ({
         label: 'Available Start Date',
         blockId: 'startDate',
       }).element(
-        ((x) => (userTimeNow ? x.initialDate(userTimeNow) : x))(
+        ((x) =>
+          userTimeNow
+            ? x.initialDate(applyTimezoneOffset(userTimeNow, -user.tz_offset))
+            : x)(
           Elements.DatePicker({
             actionId: 'startDate',
           }),
@@ -75,18 +79,21 @@ export const FreeVehicleQueryBlocks = ({
         ((x) =>
           userTimeNow
             ? x.initialDate(
-                userTimeNow.getHours() + DEFAULT_RESERVATION_PERIOD_HRS >= 24
-                  ? new Date(
-                      userTimeNow.setDate(
-                        userTimeNow.getDate() +
-                          Math.floor(
-                            (userTimeNow.getHours() +
-                              DEFAULT_RESERVATION_PERIOD_HRS) /
-                              24,
-                          ),
-                      ),
-                    )
-                  : userTimeNow,
+                applyTimezoneOffset(
+                  userTimeNow.getHours() + DEFAULT_RESERVATION_PERIOD_HRS >= 24
+                    ? new Date(
+                        userTimeNow.setDate(
+                          userTimeNow.getDate() +
+                            Math.floor(
+                              (userTimeNow.getHours() +
+                                DEFAULT_RESERVATION_PERIOD_HRS) /
+                                24,
+                            ),
+                        ),
+                      )
+                    : userTimeNow,
+                  -user.tz_offset,
+                ),
               )
             : x)(
           Elements.DatePicker({
