@@ -38,6 +38,7 @@ services:
     env_file:
       - .env
     container_name: db
+    hostname: db
 
 volumes:
   pgdata:

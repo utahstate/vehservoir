@@ -36,7 +36,17 @@ export class SlackVerificationMiddleware implements NestMiddleware {
 
   use(req: Request, res: Response, next: () => void) {
     if (this.verifySlackRequest(req)) {
-      next();
+      if (
+        req.body?.channel_id &&
+        req.body?.channel_id ===
+          this.configService.get('RESERVATION_CHANNEL_ID')
+      ) {
+        next();
+      } else if (!req.body?.channel_id) {
+        next();
+      } else {
+        res.send("Are you sure you're in the right channel?");
+      }
       return;
     }
     throw new UnauthorizedException('Invalid Slack request signature');
