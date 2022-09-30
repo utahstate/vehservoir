@@ -13,6 +13,7 @@ export interface AdminData {
 
 const actions: Record<string, (d: AdminData) => Promise<Response>> = {
   update: (currentAdminData: AdminData) => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { id, creationDate, ...dataToSend } = currentAdminData;
 
     return fetch(`/api/admin/${id}`, {
@@ -53,7 +54,7 @@ const getAdmins = async () => {
 const Admins: React.FC = (): JSX.Element => {
   const { signedIn } = useAuthContext();
 
-  const [admins, setAdmins] = useState<any[]>([]);
+  const [admins, setAdmins] = useState([]);
   const [selectedAction, setSelectedAction] = useState('');
   const [modalIsOpen, setModalIsOpen] = useState(false);
   const [currentAdminData, setCurrentAdminData] = useState<AdminData>({
