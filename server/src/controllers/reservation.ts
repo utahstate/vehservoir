@@ -14,7 +14,12 @@ import {
 import { ReservationService } from 'src/services/reservation';
 import { Reservation } from 'src/entities/reservation';
 import { ReservationDto } from 'dto/reservations/Reservation';
-import { Between, DeleteResult } from 'typeorm';
+import {
+  Between,
+  DeleteResult,
+  LessThanOrEqual,
+  MoreThanOrEqual,
+} from 'typeorm';
 import { VehicleService } from 'src/services/vehicle';
 import { Vehicle } from 'src/entities/vehicle';
 import { JwtAuthGuard } from 'src/auth/jwt_auth';
@@ -29,6 +34,17 @@ export class ReservationController {
   @Get('/api/reservations')
   async index(): Promise<Reservation[]> {
     return await this.reservationService.allReservations();
+  }
+
+  @Get('/api/reservations/current')
+  async getCurrentReservations(): Promise<Reservation[]> {
+    return await this.reservationService.findReservationsBy(
+      {
+        start: LessThanOrEqual(new Date()),
+        end: MoreThanOrEqual(new Date()),
+      },
+      { vehicle: true },
+    );
   }
 
   @UseGuards(JwtAuthGuard)
@@ -81,6 +97,25 @@ export class ReservationController {
     return await this.reservationService.save(reservation);
   }
 
+  @Get('/api/reservations/:vehicleId')
+  async getReservationsByVehicleId(
+    @Param('vehicleId') vehicleId: number,
+    @Query('start') start: Date,
+    @Query('end') end: Date,
+  ): Promise<Reservation[]> {
+    if (!(start && end) || start.getTime() >= end.getTime()) {
+      throw new HttpException('Invalid Dates', HttpStatus.BAD_REQUEST);
+    }
+
+    return await this.reservationService.findReservationsBy(
+      {
+        vehicle: { id: vehicleId },
+        start: Between(start, end),
+      },
+      { vehicle: true, request: true },
+    );
+  }
+
   private async validatePayloadAndGetVehicleOrFail(
     reservationPayload: ReservationDto,
     withIgnoreReservations: Reservation[] = [],
@@ -114,24 +149,5 @@ export class ReservationController {
     }
 
     return vehicle;
-  }
-
-  @Get('/api/reservations/:vehicleId')
-  async getReservationsByVehicleId(
-    @Param('vehicleId') vehicleId: number,
-    @Query('start') start: Date,
-    @Query('end') end: Date,
-  ): Promise<Reservation[]> {
-    if (!(start && end) || start.getTime() >= end.getTime()) {
-      throw new HttpException('Invalid Dates', HttpStatus.BAD_REQUEST);
-    }
-
-    return await this.reservationService.findReservationsBy(
-      {
-        vehicle: { id: vehicleId },
-        start: Between(start, end),
-      },
-      { vehicle: true, request: true },
-    );
   }
 }

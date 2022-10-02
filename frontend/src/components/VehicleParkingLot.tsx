@@ -1,5 +1,4 @@
 import React, { useEffect, useRef } from 'react';
-import { createVoidZero } from 'typescript';
 
 interface Dimension {
   width: number;
@@ -25,7 +24,11 @@ class Entity {
   update(dt: number) {
     this.position.x += this.velocity.dx * dt;
     this.position.y += this.velocity.dy * dt;
-    this.theta += this.dTheta * dt;
+    this.theta = 0;
+    if (this.velocity.dx || this.velocity.dy) {
+      this.theta +=
+        Math.atan2(this.velocity.dy, this.velocity.dx) + Math.PI / 2;
+    }
   }
 
   initDraw(
@@ -40,7 +43,7 @@ class Entity {
 
     ctx.translate(this.position.x, this.position.y);
     ctx.rotate(this.theta);
-    ctx.translate(-this.position.x, this.position.y);
+    ctx.translate(-this.position.x, -this.position.y);
     afterRotation(ctx, { x, y });
     ctx.restore();
   }
@@ -110,21 +113,47 @@ class Vehicle extends Entity {
   color: string;
   parkingSpot: ParkingSpot | null;
   path: Position[] = [];
+  onReachDestination: (() => void) | null = null;
+
+  static PARKING_SPEED = 5;
+  static THRESHOLD = 3;
 
   update(dt: number) {
+    super.update(dt);
     if (this.path.length) {
-      const { x, y } = this.path[0];
-      const dx = x - this.position.x;
-      const dy = y - this.position.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist < 1) {
+      if (
+        Math.sqrt(
+          Math.pow(this.path[0].x - this.position.x, 2) +
+            Math.pow(this.path[0].y - this.position.y, 2),
+        ) <= Vehicle.THRESHOLD
+      ) {
+        const oldPath = this.path[0];
         this.path.shift();
-      } else {
-        this.velocity.dx = dx / dist;
-        this.velocity.dy = dy / dist;
+        this.position = oldPath;
+        if (this.path.length === 0) {
+          this.velocity.dx = 0;
+          this.velocity.dy = 0;
+          if (this.onReachDestination) {
+            this.onReachDestination();
+            this.onReachDestination = null;
+          }
+        } else {
+          const { x, y } = this.path[0];
+          const dx = x - this.position.x;
+          const dy = y - this.position.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          this.velocity.dx =
+            (x - this.position.x) / (dist * Vehicle.PARKING_SPEED);
+          this.velocity.dy =
+            (y - this.position.y) / (dist * Vehicle.PARKING_SPEED);
+        }
       }
     }
-    super.update(dt);
+  }
+
+  setPath(path: Position[], onReachDestination: () => void) {
+    this.path = path;
+    this.onReachDestination = onReachDestination;
   }
 
   draw(ctx: CanvasRenderingContext2D) {
@@ -137,7 +166,6 @@ class Vehicle extends Entity {
 
   constructor(position: Position, dimension: Dimension, color: string) {
     super(position, dimension, { dx: 0, dy: 0 }, 0, 0);
-    this.dTheta = 0.001;
     this.color = color;
     this.parkingSpot = null;
   }
@@ -191,24 +219,89 @@ class ParkingLot extends Entity {
       .flat();
   }
 
-  createPathToParkingSpot(
-    position: Position,
-    parkingSpot: ParkingSpot,
-  ): [Position, Position][] {
-    console.log(this.gapPoints());
+  parkVehicle(vehicle: Vehicle, parkingSpot: ParkingSpot): Promise<void> {
+    parkingSpot.occupied = true;
+    vehicle.parkingSpot = parkingSpot;
 
-    return [
-      [
-        {
-          x: position.x,
-          y: position.y,
+    const yLevelEntrance = this.gapPoints()
+      .map((x) => x.y)
+      .reduce(
+        (acc, y) => {
+          const dist = Math.abs(y - parkingSpot.position.y);
+          if (dist < acc.dist) {
+            return { y, dist };
+          }
+          if (dist === acc.dist) {
+            return { y: Math.max(y, acc.y), dist };
+          }
+          return acc;
         },
-        {
-          x: parkingSpot.position.x,
-          y: parkingSpot.position.y,
-        },
-      ],
-    ];
+        { y: 0, dist: Infinity },
+      ).y;
+    return new Promise((resolve) => {
+      vehicle.setPath(
+        [
+          vehicle.position,
+          {
+            x: vehicle.position.x,
+            y: yLevelEntrance,
+          },
+          {
+            x: parkingSpot.position.x + parkingSpot.dimensions.width / 2,
+            y: yLevelEntrance,
+          },
+          {
+            x: parkingSpot.position.x + parkingSpot.dimensions.width / 2,
+            y: parkingSpot.position.y + parkingSpot.dimensions.height / 2,
+          },
+        ],
+        resolve,
+      );
+    });
+  }
+
+  unParkVehicle(vehicle: Vehicle, exitPosition: Position): Promise<void> {
+    if (!(vehicle.parkingSpot && vehicle.parkingSpot.occupied)) {
+      throw new Error('Vehicle is not parked');
+    }
+
+    const exitPoint = this.gapPoints().reduce(
+      (acc, point) => {
+        const dist = Math.sqrt(
+          Math.pow(point.x - exitPosition.x, 2) +
+            Math.pow(point.y - vehicle.position.y, 2),
+        );
+        if (dist < acc.dist) {
+          return { point, dist };
+        }
+        return acc;
+      },
+      { point: { x: 0, y: 0 }, dist: Infinity },
+    ).point;
+    return new Promise((resolve) => {
+      vehicle.setPath(
+        [
+          vehicle.position,
+          {
+            x: vehicle.position.x,
+            y: exitPoint.y,
+          },
+          {
+            x:
+              vehicle.position.x +
+              (exitPoint.x < vehicle.position.x ? 1 : -1) *
+                vehicle.dimension.width,
+            y: exitPoint.y,
+          },
+          {
+            x: exitPosition.x,
+            y: exitPoint.y,
+          },
+          exitPosition,
+        ],
+        resolve,
+      );
+    });
   }
 
   static generateOptimalParkingSections(
@@ -265,6 +358,8 @@ class ParkingLot extends Entity {
           doubleSections - 1,
           doubleSections - 1 === 0,
         );
+      } else if (singleSections) {
+        buildSections(y, singleSections, doubleSections, true);
       }
     };
 
@@ -295,23 +390,31 @@ class ParkingLot extends Entity {
 
     for (const section of this.parkingSections) {
       for (let i = 0; i < section.spots; i++) {
-        const { x, y } = section.position;
-        const { width, height } = section.dimensions;
-        const sectionWidth = width / section.spots;
-        const sectionHeight = height / (section.doubleSection ? 2 : 1);
-        this.parkingSpots.push(
-          new ParkingSpot(
-            {
-              x: x + i * sectionWidth,
-              y,
-            },
-            {
-              width: sectionWidth,
-              height: sectionHeight,
-            },
-            false,
-          ),
-        );
+        for (
+          let y = section.position.y;
+          y <
+          section.position.y +
+            (section.doubleSection ? 2 : 1) * parkingSpotDimension.height;
+          y += parkingSpotDimension.height
+        ) {
+          const { x } = section.position;
+          const { width, height } = section.dimensions;
+          const sectionWidth = width / section.spots;
+          const sectionHeight = height / (section.doubleSection ? 2 : 1);
+          this.parkingSpots.push(
+            new ParkingSpot(
+              {
+                x: x + i * sectionWidth,
+                y,
+              },
+              {
+                width: sectionWidth,
+                height: sectionHeight,
+              },
+              false,
+            ),
+          );
+        }
       }
     }
   }
@@ -331,7 +434,7 @@ const line = (
 };
 
 const vehicles: Vehicle[] = [
-  new Vehicle({ x: 0, y: 0 }, { width: 50, height: 50 }, 'red'),
+  new Vehicle({ x: 50, y: 200 }, { width: 50, height: 70 }, 'red'),
 ];
 
 const CanvasDimensions = {
@@ -355,13 +458,6 @@ const parkingLot = new ParkingLot(
   vehicles,
 );
 
-console.log(
-  parkingLot.createPathToParkingSpot(
-    { x: 0, y: 0 },
-    parkingLot.parkingSpots[0],
-  ),
-);
-
 export const VehicleParkingLot = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
@@ -369,10 +465,19 @@ export const VehicleParkingLot = () => {
     const ctx = canvas?.getContext('2d');
     let lastUpdate = Date.now();
 
+    parkingLot.parkVehicle(vehicles[0], parkingLot.parkingSpots[0]).then(() => {
+      setTimeout(() => {
+        parkingLot.unParkVehicle(vehicles[0], {
+          x: 1200,
+          y: 0,
+        });
+      }, 2000);
+    });
+
     const draw = (ctx: CanvasRenderingContext2D) => {
       ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
-      ctx.fillStyle = 'black';
+      ctx.fillStyle = '#495870';
       ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
       parkingLot.draw(ctx);
@@ -397,6 +502,7 @@ export const VehicleParkingLot = () => {
       animationFrameId = requestAnimationFrame(loop);
     };
     loop();
+
     return () => {
       window.cancelAnimationFrame(animationFrameId);
     };
