@@ -238,19 +238,24 @@ export const VehicleParkingLot = () => {
       parkingLot.update(dt);
     };
 
-    if (ctx) {
-      const loop = () => {
-        const now = Date.now();
-        const delta = now - lastUpdate;
+    let animationFrameId: number;
+    const loop = () => {
+      const now = Date.now();
+      const delta = now - lastUpdate;
 
-        update(delta);
+      update(delta);
+
+      if (ctx) {
         draw(ctx);
+      }
 
-        lastUpdate = now;
-        requestAnimationFrame(loop);
-      };
-      requestAnimationFrame(loop);
-    }
+      lastUpdate = now;
+      animationFrameId = requestAnimationFrame(loop);
+    };
+    loop();
+    return () => {
+      window.cancelAnimationFrame(animationFrameId);
+    };
   }, []);
 
   return (
