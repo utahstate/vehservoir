@@ -1,11 +1,9 @@
-import React from 'react';
-import Canvas from './common/Canvas';
+import React, { useEffect, useRef } from 'react';
 
 const CanvasDimensions = {
-  width: 2000,
-  height: 1000,
+  width: 1000,
+  height: 700,
 };
-
 interface BoundingBox {
   x: number;
   y: number;
@@ -20,23 +18,21 @@ interface ParkingSpot {
 
 class ParkingSection {
   doubleSection: boolean;
-  sections: number;
+  spots: number;
   boundingBox: BoundingBox;
 
-  constructor(
-    doubleSection: boolean,
-    sections: number,
-    boundingBox: BoundingBox,
-  ) {
+  constructor(doubleSection: boolean, spots: number, boundingBox: BoundingBox) {
     this.doubleSection = doubleSection;
-    this.sections = sections;
+    this.spots = spots;
     this.boundingBox = boundingBox;
   }
 
   draw(ctx: CanvasRenderingContext2D) {
     const { x, y, width, height } = this.boundingBox;
 
-    for (let xi = x; xi <= x + width; xi += width / this.sections) {
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = 'white';
+    for (let xi = x; xi <= x + width; xi += width / this.spots) {
       line(ctx, xi, y, xi, y + height);
     }
 
@@ -106,9 +102,9 @@ class ParkingLot {
     this.vehicles = vehicles;
 
     this.parkingSections.map((section) => {
-      for (let i = 0; i < section.sections; i++) {
+      for (let i = 0; i < section.spots; i++) {
         const { x, y, width, height } = section.boundingBox;
-        const sectionWidth = width / section.sections;
+        const sectionWidth = width / section.spots;
         const sectionHeight = height / (section.doubleSection ? 2 : 1);
         const boundingBox = {
           x: x + i * sectionWidth,
@@ -138,68 +134,124 @@ const line = (
   ctx.stroke();
 };
 
-export const VehicleParkingLot = () => {
-  const parkingSections: ParkingSection[] = [
-    new ParkingSection(false, 9, {
-      x: 150,
+const constructOptimalParkingSections = (
+  boundingBox: BoundingBox,
+  minParkingSpotWidth: number,
+  parkingSpotHeight: number,
+): ParkingSection[] => {
+  const { x, y, width, height } = boundingBox;
+  const parkingSections: ParkingSection[] = [];
+
+  const maxParkingRows = Math.floor(height / parkingSpotHeight); // The perfect grid without dividers between parking sections
+  const spots = Math.floor(width / minParkingSpotWidth);
+
+  const numDividers = Math.ceil(maxParkingRows / 3); // The minimum number of gaps between sections
+
+  let singleSections = (maxParkingRows - 1) % 3;
+
+  let sY = y;
+  if (singleSections) {
+    parkingSections.push(
+      new ParkingSection(false, spots, {
+        x,
+        y: sY,
+        width,
+        height: parkingSpotHeight,
+      }),
+    );
+    singleSections--;
+    sY += parkingSpotHeight;
+  }
+  for (
+    let i = 0;
+    i < Math.floor((maxParkingRows - numDividers - singleSections) / 2);
+    i++
+  ) {
+    sY += parkingSpotHeight; // Add a gap
+    parkingSections.push(
+      new ParkingSection(true, spots, {
+        x,
+        y: sY,
+        width,
+        height: 2 * parkingSpotHeight,
+      }),
+    );
+    sY += 2 * parkingSpotHeight;
+  }
+  if (singleSections) {
+    parkingSections.push(
+      new ParkingSection(false, spots, {
+        x,
+        y: sY + parkingSpotHeight,
+        width,
+        height: parkingSpotHeight,
+      }),
+    );
+  }
+
+  return parkingSections;
+};
+
+const vehicles: Vehicle[] = [
+  new Vehicle(
+    {
+      x: 0,
       y: 0,
-      width: 900,
-      height: 100,
-    }),
-    new ParkingSection(true, 9, {
-      x: 150,
-      y: 200,
-      width: 900,
-      height: 200,
-    }),
-    new ParkingSection(false, 9, {
-      x: 150,
-      y: 500,
-      width: 900,
-      height: 100,
-    }),
-  ];
+      width: 50,
+      height: 90,
+    },
+    'red',
+  ),
+];
 
-  const vehicles: Vehicle[] = [
-    new Vehicle(
-      {
-        x: 0,
-        y: 0,
-        width: 50,
-        height: 90,
-      },
-      'red',
-    ),
-  ];
+const parkingLot = new ParkingLot(
+  constructOptimalParkingSections(
+    {
+      x: 100,
+      y: 0,
+      width: CanvasDimensions.width - 200,
+      height: CanvasDimensions.height,
+    },
+    100,
+    100,
+  ),
+  vehicles,
+);
 
-  const parkingLot = new ParkingLot(parkingSections, vehicles);
+export const VehicleParkingLot = () => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext('2d');
+    let lastUpdate = Date.now();
 
-  const initialize = (ctx: CanvasRenderingContext2D) => {
-    ctx.fillStyle = 'white';
-    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    const draw = (ctx: CanvasRenderingContext2D) => {
+      ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
-    setLastUpdate(new Date());
-  };
+      ctx.fillStyle = 'black';
+      ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
-  const draw = (ctx: CanvasRenderingContext2D) => {
-    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+      parkingLot.draw(ctx);
+    };
 
-    parkingLot.draw(ctx);
-  };
+    const update = (dt: number) => {
+      parkingLot.update(dt);
+    };
 
-  const update = (dt: number) => {
-    parkingLot.update(dt);
-  };
+    if (ctx) {
+      const loop = () => {
+        const now = Date.now();
+        const delta = now - lastUpdate;
 
-  const loop = (ctx: CanvasRenderingContext2D) => {
-    const now = new Date();
-    const delta = now.getTime() - lastUpdate.getTime();
+        update(delta);
+        draw(ctx);
 
-    update(delta);
-    draw(ctx);
-
-    setLastUpdate(now);
-  };
+        lastUpdate = now;
+        requestAnimationFrame(loop);
+      };
+      requestAnimationFrame(loop);
+    }
+  }, []);
 
   return (
     <div
@@ -211,13 +263,13 @@ export const VehicleParkingLot = () => {
         gap: '1rem',
       }}
     >
-      <Canvas
-        style={{ border: '1px solid black ', background: 'white' }}
-        loop={loop}
-        initialize={initialize}
+      <canvas
+        ref={canvasRef}
         width={CanvasDimensions.width}
         height={CanvasDimensions.height}
+        style={{ border: '1px solid black' }}
       />
+
       <div className="progress-bar">
         <div className="progress-bar-filled" style={{ width: '40%' }}></div>
       </div>
