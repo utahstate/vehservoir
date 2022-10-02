@@ -1,34 +1,98 @@
 import React, { useEffect, useRef } from 'react';
+import { createVoidZero } from 'typescript';
 
-const CanvasDimensions = {
-  width: 1000,
-  height: 700,
-};
-interface BoundingBox {
-  x: number;
-  y: number;
+interface Dimension {
   width: number;
   height: number;
 }
+interface Position {
+  x: number;
+  y: number;
+}
 
-interface ParkingSpot {
-  boundingBox: BoundingBox;
+interface Velocity {
+  dx: number;
+  dy: number;
+}
+
+class Entity {
+  position: Position;
+  dimension: Dimension;
+  velocity: Velocity;
+  theta: number;
+  dTheta: number;
+
+  update(dt: number) {
+    this.position.x += this.velocity.dx * dt;
+    this.position.y += this.velocity.dy * dt;
+    this.theta += this.dTheta * dt;
+  }
+
+  initDraw(
+    ctx: CanvasRenderingContext2D,
+    afterRotation: (ctx: CanvasRenderingContext2D, position: Position) => void,
+  ) {
+    ctx.save();
+    const [x, y] = [
+      this.position.x - this.dimension.width / 2,
+      this.position.y - this.dimension.height / 2,
+    ];
+
+    ctx.translate(this.position.x, this.position.y);
+    ctx.rotate(this.theta);
+    ctx.translate(-this.position.x, this.position.y);
+    afterRotation(ctx, { x, y });
+    ctx.restore();
+  }
+
+  constructor(
+    position: Position,
+    dimension: Dimension,
+    velocity: Velocity,
+    theta: number,
+    dTheta: number,
+  ) {
+    this.position = position;
+    this.dimension = dimension;
+    this.velocity = velocity;
+    this.theta = theta;
+    this.dTheta = dTheta;
+  }
+}
+
+class ParkingSpot {
+  position: Position;
+  dimensions: Dimension;
   occupied: boolean;
+
+  constructor(position: Position, dimensions: Dimension, occupied: boolean) {
+    this.position = position;
+    this.dimensions = dimensions;
+    this.occupied = occupied;
+  }
 }
 
 class ParkingSection {
   doubleSection: boolean;
   spots: number;
-  boundingBox: BoundingBox;
+  position: Position;
+  dimensions: Dimension;
 
-  constructor(doubleSection: boolean, spots: number, boundingBox: BoundingBox) {
+  constructor(
+    doubleSection: boolean,
+    spots: number,
+    position: Position,
+    dimensions: Dimension,
+  ) {
     this.doubleSection = doubleSection;
     this.spots = spots;
-    this.boundingBox = boundingBox;
+    this.position = position;
+    this.dimensions = dimensions;
   }
 
   draw(ctx: CanvasRenderingContext2D) {
-    const { x, y, width, height } = this.boundingBox;
+    const { x, y } = this.position;
+    const { width, height } = this.dimensions;
 
     ctx.lineWidth = 2;
     ctx.strokeStyle = 'white';
@@ -42,49 +106,48 @@ class ParkingSection {
   }
 }
 
-class Vehicle {
-  boundingBox: BoundingBox;
+class Vehicle extends Entity {
   color: string;
-  velocity: {
-    dx: number;
-    dy: number;
-  };
-  rotation: number;
   parkingSpot: ParkingSpot | null;
-
-  draw(ctx: CanvasRenderingContext2D) {
-    const { x, y, width, height } = this.boundingBox;
-    ctx.save();
-    ctx.translate(x + width / 2, y + height / 2);
-    ctx.rotate(this.rotation);
-    ctx.translate(-(x + width / 2), -(y + height / 2));
-    ctx.fillStyle = this.color;
-    ctx.fillRect(x, y, width, height);
-    ctx.restore();
-  }
+  path: Position[] = [];
 
   update(dt: number) {
-    this.boundingBox.x += dt * this.velocity.dx;
-    this.boundingBox.y += dt * this.velocity.dy;
-    this.rotation += 0.01;
+    if (this.path.length) {
+      const { x, y } = this.path[0];
+      const dx = x - this.position.x;
+      const dy = y - this.position.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < 1) {
+        this.path.shift();
+      } else {
+        this.velocity.dx = dx / dist;
+        this.velocity.dy = dy / dist;
+      }
+    }
+    super.update(dt);
   }
 
-  constructor(boundingBox: BoundingBox, color: string) {
-    this.boundingBox = boundingBox;
+  draw(ctx: CanvasRenderingContext2D) {
+    const { width, height } = this.dimension;
+    this.initDraw(ctx, (ctx, position: Position) => {
+      ctx.fillStyle = this.color;
+      ctx.fillRect(position.x, position.y, width, height);
+    });
+  }
+
+  constructor(position: Position, dimension: Dimension, color: string) {
+    super(position, dimension, { dx: 0, dy: 0 }, 0, 0);
+    this.dTheta = 0.001;
     this.color = color;
-    this.velocity = {
-      dx: 0,
-      dy: 0,
-    };
-    this.rotation = 0;
     this.parkingSpot = null;
   }
 }
 
-class ParkingLot {
-  private parkingSections: ParkingSection[];
-  private parkingSpots: ParkingSpot[] = [];
-  private vehicles: Vehicle[] = [];
+class ParkingLot extends Entity {
+  parkingSections: ParkingSection[];
+  parkingSpots: ParkingSpot[] = [];
+  vehicles: Vehicle[] = [];
+  gaps: Position[] = [];
 
   draw(ctx: CanvasRenderingContext2D) {
     this.parkingSections.forEach((section) => section.draw(ctx));
@@ -97,27 +160,160 @@ class ParkingLot {
     });
   }
 
-  constructor(parkingSections: ParkingSection[], vehicles: Vehicle[]) {
-    this.parkingSections = parkingSections;
+  gapPoints() {
+    const yRanges = this.parkingSections
+      .sort((a, b) => a.position.y - b.position.y)
+      .map((section) => ({
+        start: section.position.y,
+        end: section.dimensions.height + section.position.y,
+      }));
+
+    const gaps = [];
+    let startY = this.position.y;
+    const endY = startY + this.dimension.height;
+    for (const yRange of yRanges) {
+      if (yRange.start > startY) {
+        gaps.push({ start: startY, end: yRange.start });
+      }
+      startY = yRange.end;
+    }
+    if (startY < endY) {
+      gaps.push({ start: startY, end: endY });
+    }
+    return gaps
+      .map(({ start, end }) => {
+        const y = (start + end) / 2;
+        return [
+          { x: this.position.x, y },
+          { x: this.position.x + this.dimension.width, y },
+        ];
+      })
+      .flat();
+  }
+
+  createPathToParkingSpot(
+    position: Position,
+    parkingSpot: ParkingSpot,
+  ): [Position, Position][] {
+    console.log(this.gapPoints());
+
+    return [
+      [
+        {
+          x: position.x,
+          y: position.y,
+        },
+        {
+          x: parkingSpot.position.x,
+          y: parkingSpot.position.y,
+        },
+      ],
+    ];
+  }
+
+  static generateOptimalParkingSections(
+    { x, y }: Position,
+    { height, width }: Dimension,
+    { height: parkingSpotHeight, width: parkingSpotWidth }: Dimension,
+  ): ParkingSection[] {
+    const parkingSections: ParkingSection[] = [];
+
+    const maxParkingRows = Math.floor(height / parkingSpotHeight);
+    const spots = Math.floor(width / parkingSpotWidth);
+
+    const numDividers = Math.ceil(maxParkingRows / 3); // The minimum number of gaps between sections
+    const dividerHeight =
+      (height - maxParkingRows * parkingSpotHeight) / numDividers +
+      parkingSpotHeight;
+
+    const buildSections = (
+      y: number,
+      singleSections: number,
+      doubleSections: number,
+      placeSingle = true,
+    ): void => {
+      if (doubleSections === 0 && singleSections === 0) {
+        return;
+      }
+      if (singleSections && placeSingle) {
+        parkingSections.push(
+          new ParkingSection(
+            false,
+            spots,
+            { x, y },
+            { width, height: parkingSpotHeight },
+          ),
+        );
+        buildSections(
+          y + parkingSpotHeight + dividerHeight,
+          singleSections - 1,
+          doubleSections,
+          false,
+        );
+      } else if (doubleSections) {
+        parkingSections.push(
+          new ParkingSection(
+            true,
+            spots,
+            { x, y },
+            { width, height: parkingSpotHeight * 2 },
+          ),
+        );
+        buildSections(
+          y + parkingSpotHeight * 2 + dividerHeight,
+          singleSections,
+          doubleSections - 1,
+          doubleSections - 1 === 0,
+        );
+      }
+    };
+
+    const singleSections = (maxParkingRows - 1) % 3;
+    buildSections(
+      y + (!singleSections ? dividerHeight : 0),
+      singleSections,
+      Math.floor((maxParkingRows - numDividers - singleSections) / 2),
+    );
+    return parkingSections;
+  }
+
+  constructor(
+    dimension: Dimension,
+    parkingSpotDimension: Dimension,
+    position: Position,
+    vehicles: Vehicle[],
+  ) {
+    super(position, dimension, { dx: 0, dy: 0 }, 0, 0);
+
     this.vehicles = vehicles;
 
-    this.parkingSections.map((section) => {
+    this.parkingSections = ParkingLot.generateOptimalParkingSections(
+      position,
+      dimension,
+      parkingSpotDimension,
+    );
+
+    for (const section of this.parkingSections) {
       for (let i = 0; i < section.spots; i++) {
-        const { x, y, width, height } = section.boundingBox;
+        const { x, y } = section.position;
+        const { width, height } = section.dimensions;
         const sectionWidth = width / section.spots;
         const sectionHeight = height / (section.doubleSection ? 2 : 1);
-        const boundingBox = {
-          x: x + i * sectionWidth,
-          y: y,
-          width: sectionWidth,
-          height: sectionHeight,
-        };
-        this.parkingSpots.push({
-          boundingBox,
-          occupied: false,
-        });
+        this.parkingSpots.push(
+          new ParkingSpot(
+            {
+              x: x + i * sectionWidth,
+              y,
+            },
+            {
+              width: sectionWidth,
+              height: sectionHeight,
+            },
+            false,
+          ),
+        );
       }
-    });
+    }
   }
 }
 
@@ -134,88 +330,36 @@ const line = (
   ctx.stroke();
 };
 
-const constructOptimalParkingSections = (
-  boundingBox: BoundingBox,
-  minParkingSpotWidth: number,
-  parkingSpotHeight: number,
-): ParkingSection[] => {
-  const { x, y, width, height } = boundingBox;
-  const parkingSections: ParkingSection[] = [];
-
-  const maxParkingRows = Math.floor(height / parkingSpotHeight); // The perfect grid without dividers between parking sections
-  const spots = Math.floor(width / minParkingSpotWidth);
-
-  const numDividers = Math.ceil(maxParkingRows / 3); // The minimum number of gaps between sections
-
-  let singleSections = (maxParkingRows - 1) % 3;
-
-  let sY = y;
-  if (singleSections) {
-    parkingSections.push(
-      new ParkingSection(false, spots, {
-        x,
-        y: sY,
-        width,
-        height: parkingSpotHeight,
-      }),
-    );
-    singleSections--;
-    sY += parkingSpotHeight;
-  }
-  for (
-    let i = 0;
-    i < Math.floor((maxParkingRows - numDividers - singleSections) / 2);
-    i++
-  ) {
-    sY += parkingSpotHeight; // Add a gap
-    parkingSections.push(
-      new ParkingSection(true, spots, {
-        x,
-        y: sY,
-        width,
-        height: 2 * parkingSpotHeight,
-      }),
-    );
-    sY += 2 * parkingSpotHeight;
-  }
-  if (singleSections) {
-    parkingSections.push(
-      new ParkingSection(false, spots, {
-        x,
-        y: sY + parkingSpotHeight,
-        width,
-        height: parkingSpotHeight,
-      }),
-    );
-  }
-
-  return parkingSections;
-};
-
 const vehicles: Vehicle[] = [
-  new Vehicle(
-    {
-      x: 0,
-      y: 0,
-      width: 50,
-      height: 90,
-    },
-    'red',
-  ),
+  new Vehicle({ x: 0, y: 0 }, { width: 50, height: 50 }, 'red'),
 ];
 
+const CanvasDimensions = {
+  width: 1000,
+  height: 600,
+};
+
 const parkingLot = new ParkingLot(
-  constructOptimalParkingSections(
-    {
-      x: 100,
-      y: 0,
-      width: CanvasDimensions.width - 200,
-      height: CanvasDimensions.height,
-    },
-    100,
-    100,
-  ),
+  {
+    width: CanvasDimensions.width - 200,
+    height: CanvasDimensions.height,
+  },
+  {
+    width: 80,
+    height: 100,
+  },
+  {
+    x: 100,
+    y: 0,
+  },
   vehicles,
+);
+
+console.log(
+  parkingLot.createPathToParkingSpot(
+    { x: 0, y: 0 },
+    parkingLot.parkingSpots[0],
+  ),
 );
 
 export const VehicleParkingLot = () => {
