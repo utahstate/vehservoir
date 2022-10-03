@@ -145,10 +145,9 @@ export const ReservationsCalendar = ({ vehicle }) => {
         <FullCalendar
           ref={calendarRef}
           plugins={[timeGridPlugin, interactionPlugin]}
-          height="auto"
           editable={signedIn}
           selectable={signedIn}
-          weekends={false}
+          height={600}
           eventOverlap={false}
           customButtons={{
             customTitle: {
@@ -161,8 +160,8 @@ export const ReservationsCalendar = ({ vehicle }) => {
           }}
           allDaySlot={false}
           allDayContent={false}
-          slotMinTime={'08:00:00'}
-          slotMaxTime={'20:00:00'}
+          // slotMinTime={'08:00:00'}
+          // slotMaxTime={'20:00:00'}
           initialView="timeGridWeek"
           events={initialReservations}
           datesSet={(dateInfo) => setDateInfo(dateInfo)}
