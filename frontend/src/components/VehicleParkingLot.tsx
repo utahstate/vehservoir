@@ -248,7 +248,10 @@ class ParkingLot extends Entity {
             y: yLevelEntrance,
           },
           {
-            x: parkingSpot.position.x + parkingSpot.dimensions.width / 2,
+            x:
+              parkingSpot.position.x +
+              parkingSpot.dimensions.width / 2 -
+              vehicle.dimension.width / 3,
             y: yLevelEntrance,
           },
           {
@@ -284,13 +287,9 @@ class ParkingLot extends Entity {
         [
           vehicle.position,
           {
-            x: vehicle.position.x,
-            y: exitPoint.y,
-          },
-          {
             x:
               vehicle.position.x +
-              (exitPoint.x < vehicle.position.x ? 1 : -1) *
+              (exitPoint.x < vehicle.position.x ? 0.5 : -0.5) *
                 vehicle.dimension.width,
             y: exitPoint.y,
           },
@@ -472,14 +471,16 @@ export const VehicleParkingLot = () => {
     const ctx = canvas?.getContext('2d');
     let lastUpdate = Date.now();
 
-    parkingLot.parkVehicle(vehicles[0], parkingLot.parkingSpots[0]).then(() => {
-      setTimeout(() => {
-        parkingLot.unParkVehicle(vehicles[0], {
-          x: 1200,
-          y: 0,
-        });
-      }, 2000);
-    });
+    parkingLot
+      .parkVehicle(vehicles[0], parkingLot.parkingSpots[15])
+      .then(() => {
+        setTimeout(() => {
+          parkingLot.unParkVehicle(vehicles[0], {
+            x: 1200,
+            y: 0,
+          });
+        }, 2000);
+      });
 
     const draw = (ctx: CanvasRenderingContext2D) => {
       ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
