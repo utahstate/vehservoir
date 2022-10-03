@@ -160,8 +160,6 @@ export const ReservationsCalendar = ({ vehicle }) => {
           }}
           allDaySlot={false}
           allDayContent={false}
-          // slotMinTime={'08:00:00'}
-          // slotMaxTime={'20:00:00'}
           initialView="timeGridWeek"
           events={initialReservations}
           datesSet={(dateInfo) => setDateInfo(dateInfo)}
