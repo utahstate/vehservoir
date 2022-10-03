@@ -1,0 +1,50 @@
+version: '3'
+
+services:
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    networks:
+      - webapp
+      - database
+    depends_on:
+      - db
+    env_file:
+      - .env
+    restart: always
+    container_name: server
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    networks:
+      - webapp
+    ports:
+      - 42069:80
+    depends_on:
+      - server
+    restart: always
+    container_name: frontend
+
+  db:
+    image: postgres
+    networks:
+      - database
+    volumes:
+      - pgdata:/var/lib/postgresql/data/
+    restart: always
+    env_file:
+      - .env
+    container_name: db
+    hostname: db
+
+volumes:
+  pgdata:
+
+networks:
+  webapp:
+    driver: bridge
+  database:
+    driver: bridge

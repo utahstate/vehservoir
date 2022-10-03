@@ -149,6 +149,7 @@ export const ReservationsCalendar = ({ vehicle }) => {
           editable={signedIn}
           selectable={signedIn}
           weekends={false}
+          eventOverlap={false}
           customButtons={{
             customTitle: {
               text: vehicle.name,

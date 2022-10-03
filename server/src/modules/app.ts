@@ -23,7 +23,7 @@ import { ScheduleModule } from '@nestjs/schedule';
         url:
           config.get('DATABASE_URL') ||
           'postgresql://postgres:postgres@localhost:5432/vehservoir',
-        synchronize: config.get('NODE_ENV') !== 'production',
+        synchronize: true,
         entities: ['dist/src/entities/**/*.js'],
         autoLoadEntities: true,
       }),

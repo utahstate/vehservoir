@@ -74,6 +74,7 @@ export interface SlackUser {
   tz: string;
 }
 
+const FILL_FORM_MESSAGE = "Here's your requested form. Fill it out, bucko 📝.";
 const REMIND_MESSAGE_USER_THRESHOLD_SEC = 5 * 60;
 const formatErrors = (errors: string[]) =>
   errors.map((x) => `* ${x}`).join('\n');
@@ -200,7 +201,7 @@ export class SlackController {
         },
       },
     );
-    return 'Please fill out the form';
+    return FILL_FORM_MESSAGE;
   }
 
   @Post('/api/slack/reserve')
@@ -233,7 +234,7 @@ export class SlackController {
         },
       },
     );
-    return 'Please fill out the form';
+    return FILL_FORM_MESSAGE;
   }
 
   @Post('/api/slack/interactions')
