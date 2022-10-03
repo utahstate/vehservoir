@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { useReservationSocket } from '../hooks/UseReservationSocket';
 
 interface Dimension {
   width: number;
@@ -460,6 +461,12 @@ const parkingLot = new ParkingLot(
 
 export const VehicleParkingLot = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const { reservations } = useReservationSocket();
+
+  useEffect(() => {
+    console.log(reservations);
+  }, [reservations]);
+
   useEffect(() => {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext('2d');
