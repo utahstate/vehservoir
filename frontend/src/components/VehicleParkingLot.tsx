@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useReservationSocket } from '../hooks/UseReservationSocket';
 
 interface Dimension {
@@ -111,13 +111,14 @@ class ParkingSection {
 }
 
 class Vehicle extends Entity {
+  id: number;
   color: string;
   parkingSpot: ParkingSpot | null;
   path: Position[] = [];
   onReachDestination: (() => void) | null = null;
 
-  static PARKING_SPEED = 5;
-  static THRESHOLD = 3;
+  static PARKING_SPEED = 6;
+  static THRESHOLD = 35;
 
   update(dt: number) {
     super.update(dt);
@@ -131,7 +132,7 @@ class Vehicle extends Entity {
         const oldPath = this.path[0];
         this.path.shift();
         this.position = oldPath;
-        if (this.path.length === 0) {
+        if (!this.path.length) {
           this.velocity.dx = 0;
           this.velocity.dy = 0;
           if (this.onReachDestination) {
@@ -149,6 +150,11 @@ class Vehicle extends Entity {
             (y - this.position.y) / (dist * Vehicle.PARKING_SPEED);
         }
       }
+    } else if (this.parkingSpot) {
+      this.position = {
+        x: this.parkingSpot.position.x + this.parkingSpot.dimensions.width / 2,
+        y: this.parkingSpot.position.y + this.parkingSpot.dimensions.height / 2,
+      };
     }
   }
 
@@ -165,8 +171,14 @@ class Vehicle extends Entity {
     });
   }
 
-  constructor(position: Position, dimension: Dimension, color: string) {
+  constructor(
+    position: Position,
+    dimension: Dimension,
+    color: string,
+    id: number,
+  ) {
     super(position, dimension, { dx: 0, dy: 0 }, 0, 0);
+    this.id = id;
     this.color = color;
     this.parkingSpot = null;
   }
@@ -187,6 +199,18 @@ class ParkingLot extends Entity {
     this.vehicles.forEach((vehicle) => {
       vehicle.update(dt);
     });
+  }
+
+  randomUnassignedParkingSpot(): ParkingSpot {
+    const unassignedSpots = this.parkingSpots.filter(
+      (parkingSpot) => !parkingSpot.occupied,
+    );
+
+    if (!unassignedSpots.length) {
+      throw new Error('No unoccupied parking spots');
+    }
+
+    return unassignedSpots[Math.floor(Math.random() * unassignedSpots.length)];
   }
 
   gapPoints() {
@@ -250,8 +274,10 @@ class ParkingLot extends Entity {
           {
             x:
               parkingSpot.position.x +
-              parkingSpot.dimensions.width / 2 -
-              vehicle.dimension.width / 3,
+              parkingSpot.dimensions.width / 2 +
+              ((vehicle.position.x < parkingSpot.position.x ? -1 : 1) *
+                vehicle.dimension.width) /
+                3,
             y: yLevelEntrance,
           },
           {
@@ -268,6 +294,9 @@ class ParkingLot extends Entity {
     if (!(vehicle.parkingSpot && vehicle.parkingSpot.occupied)) {
       throw new Error('Vehicle is not parked');
     }
+
+    vehicle.parkingSpot.occupied = false;
+    vehicle.parkingSpot = null;
 
     const exitPoint = this.gapPoints().reduce(
       (acc, point) => {
@@ -433,34 +462,82 @@ const line = (
   ctx.stroke();
 };
 
-const vehicles: Vehicle[] = [
-  new Vehicle({ x: 50, y: 200 }, { width: 50, height: 70 }, 'red'),
-];
-
 const CanvasDimensions = {
   width: 1000,
   height: 600,
 };
 
-const parkingLot = new ParkingLot(
-  {
-    width: CanvasDimensions.width - 200,
-    height: CanvasDimensions.height,
-  },
-  {
-    width: 80,
-    height: 100,
-  },
-  {
-    x: 100,
-    y: 0,
-  },
-  vehicles,
-);
-
 export const VehicleParkingLot = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const { reservations } = useReservationSocket();
+  const { reservations } = useReservationSocket({
+    onReservationStarted: (reservation: { vehicle: { id: number } }) => {
+      const referencedVehicle = parkingLot.vehicles.find(
+        (vehicle) => vehicle.id === reservation.vehicle.id,
+      );
+      console.log(referencedVehicle, ' was reserved');
+
+      if (referencedVehicle) {
+        parkingLot.unParkVehicle(referencedVehicle, {
+          x: 0,
+          y: -100,
+        });
+      }
+    },
+    onReservationEnded: (reservation: { vehicle: { id: number } }) => {
+      const referencedVehicle = parkingLot.vehicles.find(
+        (vehicle) => vehicle.id === reservation.vehicle.id,
+      );
+      if (referencedVehicle) {
+        parkingLot.parkVehicle(
+          referencedVehicle,
+          parkingLot.randomUnassignedParkingSpot(),
+        );
+      }
+    },
+  });
+  let isPaused = false;
+  const parkingLot = new ParkingLot(
+    {
+      width: CanvasDimensions.width - 200,
+      height: CanvasDimensions.height,
+    },
+    {
+      width: 80,
+      height: 100,
+    },
+    {
+      x: 100,
+      y: 0,
+    },
+    [],
+  );
+
+  useEffect(() => {
+    fetch('/api/vehicles')
+      .then((vehicleResponse) => vehicleResponse.json())
+      .then((vehicles) => {
+        const vehicleObjs = vehicles.map(
+          (vehicle: { color: string; id: number }) =>
+            new Vehicle(
+              {
+                x: Math.random() * 2 > 1 ? 0 : CanvasDimensions.width - 50,
+                y: Math.random() * CanvasDimensions.height,
+              },
+              { width: 60, height: 80 },
+              vehicle.color,
+              vehicle.id,
+            ),
+        );
+
+        parkingLot.vehicles = vehicleObjs;
+        for (let i = 0; i < parkingLot.vehicles.length; i++) {
+          parkingLot.parkVehicle(
+            parkingLot.vehicles[i],
+            parkingLot.parkingSpots[i],
+          );
+        }
+      });
+  }, []);
 
   useEffect(() => {
     console.log(reservations);
@@ -470,17 +547,6 @@ export const VehicleParkingLot = () => {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext('2d');
     let lastUpdate = Date.now();
-
-    parkingLot
-      .parkVehicle(vehicles[0], parkingLot.parkingSpots[15])
-      .then(() => {
-        setTimeout(() => {
-          parkingLot.unParkVehicle(vehicles[0], {
-            x: 1200,
-            y: 0,
-          });
-        }, 2000);
-      });
 
     const draw = (ctx: CanvasRenderingContext2D) => {
       ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
@@ -500,7 +566,9 @@ export const VehicleParkingLot = () => {
       const now = Date.now();
       const delta = now - lastUpdate;
 
-      update(delta);
+      if (!isPaused) {
+        update(delta);
+      }
 
       if (ctx) {
         draw(ctx);
@@ -510,6 +578,9 @@ export const VehicleParkingLot = () => {
       animationFrameId = requestAnimationFrame(loop);
     };
     loop();
+
+    window.onblur = () => (isPaused = true);
+    window.onfocus = () => (isPaused = false);
 
     return () => {
       window.cancelAnimationFrame(animationFrameId);

@@ -54,7 +54,6 @@ export class ReservationGateway {
     this.reservationTimeouts.set(
       reservation.id,
       setTimeout(() => {
-        console.log('REMINDING CLIENTS');
         this.maybeRemindClientsOfReservation(reservation);
       }, Math.max(0, reservation.start.getTime() - Date.now()) + TIMEOUT_ENSURE_DELTA_MS),
     );
