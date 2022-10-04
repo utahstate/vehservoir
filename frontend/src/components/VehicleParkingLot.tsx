@@ -188,7 +188,6 @@ class ParkingLot extends Entity {
   parkingSections: ParkingSection[];
   parkingSpots: ParkingSpot[] = [];
   vehicles: Vehicle[] = [];
-  gaps: Position[] = [];
 
   draw(ctx: CanvasRenderingContext2D) {
     this.parkingSections.forEach((section) => section.draw(ctx));
@@ -199,6 +198,10 @@ class ParkingLot extends Entity {
     this.vehicles.forEach((vehicle) => {
       vehicle.update(dt);
     });
+  }
+
+  findVehicle(id: number): Vehicle | undefined {
+    return this.vehicles.find((vehicle) => vehicle.id === id);
   }
 
   randomUnassignedParkingSpot(): ParkingSpot {
@@ -213,7 +216,7 @@ class ParkingLot extends Entity {
     return unassignedSpots[Math.floor(Math.random() * unassignedSpots.length)];
   }
 
-  gapPoints() {
+  gaps() {
     const yRanges = this.parkingSections
       .sort((a, b) => a.position.y - b.position.y)
       .map((section) => ({
@@ -233,7 +236,11 @@ class ParkingLot extends Entity {
     if (startY < endY) {
       gaps.push({ start: startY, end: endY });
     }
-    return gaps
+    return gaps;
+  }
+
+  gapPoints() {
+    return this.gaps()
       .map(({ start, end }) => {
         const y = (start + end) / 2;
         return [
@@ -464,19 +471,24 @@ const line = (
 
 const CanvasDimensions = {
   width: 1000,
-  height: 600,
+  height: 700,
 };
 
 export const VehicleParkingLot = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { reservations } = useReservationSocket({
-    onReservationStarted: (reservation: { vehicle: { id: number } }) => {
-      const referencedVehicle = parkingLot.vehicles.find(
-        (vehicle) => vehicle.id === reservation.vehicle.id,
-      );
+    onReservationStarted: (reservation: {
+      end: string;
+      vehicle: { id: number };
+    }) => {
+      const referencedVehicle = parkingLot.findVehicle(reservation.vehicle.id);
       console.log(referencedVehicle, ' was reserved');
 
-      if (referencedVehicle) {
+      if (
+        new Date(reservation.end).getTime() > Date.now() &&
+        referencedVehicle &&
+        referencedVehicle.parkingSpot
+      ) {
         parkingLot.unParkVehicle(referencedVehicle, {
           x: 0,
           y: -100,
@@ -488,10 +500,17 @@ export const VehicleParkingLot = () => {
         (vehicle) => vehicle.id === reservation.vehicle.id,
       );
       if (referencedVehicle) {
-        parkingLot.parkVehicle(
-          referencedVehicle,
-          parkingLot.randomUnassignedParkingSpot(),
-        );
+        const onReachDestination = () => {
+          parkingLot.parkVehicle(
+            referencedVehicle,
+            parkingLot.randomUnassignedParkingSpot(),
+          );
+        };
+        if (referencedVehicle.path.length) {
+          referencedVehicle.onReachDestination = onReachDestination;
+        } else if (!referencedVehicle.parkingSpot) {
+          onReachDestination();
+        }
       }
     },
   });
@@ -530,12 +549,30 @@ export const VehicleParkingLot = () => {
         );
 
         parkingLot.vehicles = vehicleObjs;
-        for (let i = 0; i < parkingLot.vehicles.length; i++) {
-          parkingLot.parkVehicle(
-            parkingLot.vehicles[i],
-            parkingLot.parkingSpots[i],
-          );
-        }
+        Promise.all(
+          parkingLot.vehicles.map((vehicle, i) =>
+            parkingLot.parkVehicle(
+              parkingLot.vehicles[i],
+              parkingLot.parkingSpots[i],
+            ),
+          ),
+        ).then(() => {
+          fetch('/api/reservations/current')
+            .then((resp) => resp.json())
+            .then((reservations) =>
+              reservations.forEach(
+                (reservation: { vehicle: { id: number } }) => {
+                  console.log(reservation, ' is a reservation');
+                  const referencedVehicle = parkingLot.findVehicle(
+                    reservation.vehicle.id,
+                  );
+                  if (referencedVehicle) {
+                    parkingLot.unParkVehicle(referencedVehicle, { x: 0, y: 0 });
+                  }
+                },
+              ),
+            );
+        });
       });
   }, []);
 
