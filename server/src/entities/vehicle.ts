@@ -16,6 +16,9 @@ export class Vehicle {
   @Column({ nullable: false })
   name: string;
 
+  @Column({ nullable: false, default: 'red' })
+  color: string;
+
   @ManyToOne(() => VehicleType, (type) => type.vehicles, {
     onDelete: 'CASCADE',
   })
