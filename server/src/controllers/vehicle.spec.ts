@@ -118,20 +118,17 @@ const vehicleServiceMocks = {
     );
     return vehicleTypes;
   },
-  findOrCreateTypeName: async (
-    name: string,
-    createIfNotFound: boolean,
+  findOrCreateType: async (
+    type: Partial<VehicleType>,
   ): Promise<VehicleType> => {
-    const vehicleType = await vehicleServiceMocks.findTypeBy({
-      name: name,
-    });
+    let vehicleType = await vehicleServiceMocks.findTypeBy({ name: type.name });
 
-    if (!vehicleType && createIfNotFound) {
-      const newVehicleType = new VehicleType();
-      newVehicleType.name = name;
-      return await vehicleServiceMocks.saveType(newVehicleType);
+    if (!vehicleType) {
+      vehicleType = new VehicleType();
+      vehicleType.name = type.name;
     }
-    return vehicleType;
+    vehicleType.color = type.color;
+    return await vehicleServiceMocks.saveType(vehicleType);
   },
   vehicleFreePeriodsBy: async (
     _options: Record<string, any>,
@@ -271,6 +268,7 @@ describe('VehicleController', () => {
         type: {
           name: 'Minivan',
           new: false,
+          color: '#FF0000',
         },
       };
       expect(await vehicleController.createVehicle(body)).toEqual({
@@ -279,6 +277,7 @@ describe('VehicleController', () => {
         type: {
           id: vehicleTypeGlobalId,
           name: 'Minivan',
+          color: '#FF0000',
         },
       });
     });
@@ -288,6 +287,7 @@ describe('VehicleController', () => {
         name: "Logan's Gamer Submarine",
         type: {
           name: 'Submarine',
+          color: '#FF0000',
           new: false,
         },
       };
@@ -304,6 +304,7 @@ describe('VehicleController', () => {
         type: {
           name: 'Submarine',
           new: true,
+          color: '#FF0000',
         },
       };
       expect(await vehicleController.createVehicle(body)).toEqual({
@@ -312,6 +313,7 @@ describe('VehicleController', () => {
         type: {
           id: vehicleTypeGlobalId,
           name: 'Submarine',
+          color: '#FF0000',
         },
       });
     });
@@ -325,6 +327,7 @@ describe('VehicleController', () => {
         type: {
           name: 'bike',
           new: true,
+          color: '#FF0000',
         },
         name: 'Bicycle 1',
       });
@@ -335,6 +338,7 @@ describe('VehicleController', () => {
         type: {
           id: vehicleTypeGlobalId,
           name: 'bike',
+          color: '#FF0000',
         },
       });
     });
@@ -346,6 +350,7 @@ describe('VehicleController', () => {
           type: {
             new: false,
             name: 'bike',
+            color: '#FF0000',
           },
         });
       } catch (e) {
