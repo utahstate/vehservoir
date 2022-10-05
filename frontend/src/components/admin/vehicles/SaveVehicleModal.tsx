@@ -1,5 +1,5 @@
 import React, { FC, useEffect, useState } from 'react';
-import { toTitleCase } from '../../../pages/admin/Vehicles';
+import { toTitleCase, VehicleTypeData } from '../../../pages/admin/Vehicles';
 import Modal from '../../common/Modal';
 import { VehicleModalProps } from './vehicleData';
 import Alert from '../../common/Alert';
@@ -11,7 +11,7 @@ const SaveVehicleModal: FC<VehicleModalProps> = ({
   setCurrentVehicleData,
   setIsOpen,
 }) => {
-  const [vehicleTypes, setVehicleTypes] = useState([]);
+  const [vehicleTypes, setVehicleTypes] = useState<VehicleTypeData[]>([]);
   const [isNewVehicleType, setIsNewVehicleType] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
 
@@ -21,7 +21,15 @@ const SaveVehicleModal: FC<VehicleModalProps> = ({
       credentials: 'include',
     })
       .then((vehicleTypeJsonCollection) => vehicleTypeJsonCollection.json())
-      .then((vehicleTypeList) => setVehicleTypes(vehicleTypeList));
+      .then((vehicleTypeList) => {
+        if (vehicleTypeList.length) {
+          setCurrentVehicleData({
+            ...currentVehicleData,
+            type: vehicleTypeList[0],
+          });
+        }
+        setVehicleTypes(vehicleTypeList);
+      });
   }, []);
 
   return (
@@ -64,6 +72,53 @@ const SaveVehicleModal: FC<VehicleModalProps> = ({
               />
             </div>
             <div className="form-group">
+              <label htmlFor="color">
+                Color for vehicle type &quot;{currentVehicleData.type.name}
+                &quot;:
+              </label>
+              <input
+                type="color"
+                value={
+                  !isNewVehicleType
+                    ? vehicleTypes.find(
+                        (vehicleType) =>
+                          vehicleType.name === currentVehicleData.type.name,
+                      )?.color || '#FF0000'
+                    : currentVehicleData.type.color
+                }
+                style={{
+                  border: 'none',
+                  appearance: 'none',
+                  width: '100%',
+                  height: 45,
+                  margin: 0,
+                  padding: 0,
+                  outline: 'none',
+                  backgroundColor: 'transparent',
+                }}
+                onChange={(e) => {
+                  setVehicleTypes((types) => {
+                    if (!isNewVehicleType) {
+                      types = types.map((type) =>
+                        type.name === currentVehicleData.type.name
+                          ? { ...type, color: e.target.value }
+                          : type,
+                      );
+                    }
+                    return types;
+                  });
+
+                  setCurrentVehicleData({
+                    ...currentVehicleData,
+                    type: {
+                      ...currentVehicleData.type,
+                      color: e.target.value,
+                    },
+                  });
+                }}
+              />
+            </div>
+            <div className="form-group">
               <label htmlFor="is-new">New Vehicle Type?</label>
               <input
                 type="checkbox"
@@ -83,7 +138,11 @@ const SaveVehicleModal: FC<VehicleModalProps> = ({
                   onChange={(e) =>
                     setCurrentVehicleData({
                       ...currentVehicleData,
-                      type: { name: toTitleCase(e.target.value), new: false },
+                      type: {
+                        ...currentVehicleData.type,
+                        name: e.target.value,
+                        new: false,
+                      },
                     })
                   }
                   style={{
@@ -109,7 +168,11 @@ const SaveVehicleModal: FC<VehicleModalProps> = ({
                   onChange={(e) =>
                     setCurrentVehicleData({
                       ...currentVehicleData,
-                      type: { name: toTitleCase(e.target.value), new: true },
+                      type: {
+                        ...currentVehicleData.type,
+                        name: toTitleCase(e.target.value),
+                        new: true,
+                      },
                     })
                   }
                 />

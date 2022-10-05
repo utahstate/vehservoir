@@ -1,6 +1,7 @@
 import { Type } from 'class-transformer';
 import {
   IsBoolean,
+  IsHexColor,
   IsNotEmpty,
   IsString,
   ValidateNested,
@@ -13,6 +14,9 @@ class VehicleTypeSpecificationDto {
 
   @IsBoolean()
   new: boolean;
+
+  @IsHexColor()
+  color: string;
 }
 
 export class VehicleCreationDto {

@@ -4,13 +4,16 @@ import DeleteVehicleModal from '../../components/admin/vehicles/DeleteVehicleMod
 import SaveVehicleModal from '../../components/admin/vehicles/SaveVehicleModal';
 import { useAuthContext } from '../../context/AuthContext';
 
+export interface VehicleTypeData {
+  id: number | null;
+  name: string;
+  new: boolean;
+  color: string;
+}
 export interface VehicleData {
   id: number | null;
   name: string;
-  type: {
-    name: string;
-    new: boolean;
-  };
+  type: VehicleTypeData;
 }
 
 export const toTitleCase = (str: string) =>
@@ -69,7 +72,7 @@ const Vehicles: FC = () => {
   const [currentVehicleData, setCurrentVehicleData] = useState<VehicleData>({
     id: null,
     name: '',
-    type: { name: '', new: true },
+    type: { id: null, name: '', new: true, color: '#FF0000' },
   });
 
   const refreshVehicles = (): void => {

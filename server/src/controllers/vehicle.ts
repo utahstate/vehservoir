@@ -133,16 +133,9 @@ export class VehicleController {
   private async getOrCreateTypeFromBodyOrFail(
     vehiclePayload: VehicleCreationDto,
   ): Promise<VehicleType> {
-    const type = await this.vehicleService.findOrCreateTypeName(
-      vehiclePayload.type.name,
-      vehiclePayload.type.new,
+    const type = await this.vehicleService.findOrCreateType(
+      vehiclePayload.type,
     );
-    if (!type) {
-      throw new HttpException(
-        `Vehicle type ${vehiclePayload.type.name} cannot be found (create it with new: true).`,
-        HttpStatus.NOT_FOUND,
-      );
-    }
     return type;
   }
 }

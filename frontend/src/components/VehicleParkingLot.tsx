@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
 import { useReservationSocket } from '../hooks/UseReservationSocket';
+import { VehicleData } from '../pages/admin/Vehicles';
 
 /*
  _____
@@ -520,6 +521,8 @@ export const VehicleParkingLot = () => {
     [],
   );
   const messagesRef = useRef<HTMLDivElement>(null);
+  // Map from color hex to type name
+  const [colorLegend, setColorLegend] = useState<Record<string, string>>({});
 
   const saveCurrentReservation = (reservation: Reservation) => {
     // Overwrites the previous reservation with the same vehicle id
@@ -647,18 +650,21 @@ export const VehicleParkingLot = () => {
     fetch('/api/vehicles')
       .then((vehicleResponse) => vehicleResponse.json())
       .then((vehicles) => {
-        parkingLot.vehicles = vehicles.map(
-          (vehicle: { color: string; id: number }) =>
-            new Vehicle(
-              {
-                x: 0,
-                y: 0,
-              },
-              VehicleDimensions,
-              vehicle.color,
-              vehicle.id,
-            ),
-        );
+        parkingLot.vehicles = vehicles.map((vehicle: VehicleData) => {
+          setColorLegend((colorLegend) => {
+            colorLegend[vehicle.type.color] = vehicle.type.name;
+            return colorLegend;
+          });
+          return new Vehicle(
+            {
+              x: 0,
+              y: 0,
+            },
+            VehicleDimensions,
+            vehicle.type.color,
+            vehicle.id || 0,
+          );
+        });
 
         // Wait until all vehicles are done parking before we do any reservation stuffs
         Promise.all(
@@ -803,6 +809,23 @@ export const VehicleParkingLot = () => {
         height={CanvasDimensions.height}
         style={{ border: '1px solid black' }}
       />
+
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
+        {Object.keys(colorLegend).map((key) => {
+          const value = colorLegend[key];
+          return (
+            <div
+              key={key}
+              style={{ display: 'flex', flexDirection: 'row', gap: '1rem' }}
+            >
+              <div
+                style={{ width: '1rem', height: '1rem', background: key }}
+              ></div>
+              <span>{value}</span>
+            </div>
+          );
+        })}
+      </div>
 
       {timeline.length ? (
         <div style={{ height: '30vh', overflow: 'scroll' }}>

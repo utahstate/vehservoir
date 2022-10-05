@@ -55,20 +55,15 @@ export class VehicleService {
     return this.vehicleTypeRepo.findOne({ where: options });
   }
 
-  async findOrCreateTypeName(
-    name: string,
-    createIfNotFound: boolean,
-  ): Promise<VehicleType> {
-    const vehicleType = await this.findTypeBy({
-      name: name,
-    });
+  async findOrCreateType(type: Partial<VehicleType>): Promise<VehicleType> {
+    let vehicleType = await this.findTypeBy({ name: type.name });
 
-    if (!vehicleType && createIfNotFound) {
-      const newVehicleType = new VehicleType();
-      newVehicleType.name = name;
-      return await this.saveType(newVehicleType);
+    if (!vehicleType) {
+      vehicleType = new VehicleType();
+      vehicleType.name = type.name;
     }
-    return vehicleType;
+    vehicleType.color = type.color;
+    return await this.saveType(vehicleType);
   }
 
   async remove(vehicle: Vehicle): Promise<DeleteResult> {
