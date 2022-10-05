@@ -520,9 +520,10 @@ export const VehicleParkingLot = () => {
   const [currentReservations, setCurrentReservations] = useState<Reservation[]>(
     [],
   );
-  const messagesRef = useRef<HTMLDivElement>(null);
   // Map from color hex to type name
   const [colorLegend, setColorLegend] = useState<Record<string, string>>({});
+  const messagesRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const saveCurrentReservation = (reservation: Reservation) => {
     // Overwrites the previous reservation with the same vehicle id
@@ -542,8 +543,6 @@ export const VehicleParkingLot = () => {
       ),
     );
   };
-
-  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const parkingLot = new ParkingLot(
     {
@@ -653,7 +652,7 @@ export const VehicleParkingLot = () => {
         parkingLot.vehicles = vehicles.map((vehicle: VehicleData) => {
           setColorLegend((colorLegend) => {
             colorLegend[vehicle.type.color] = vehicle.type.name;
-            return colorLegend;
+            return { ...colorLegend };
           });
           return new Vehicle(
             {
@@ -676,8 +675,8 @@ export const VehicleParkingLot = () => {
             };
             return parkingLot.parkVehicle(vehicle, parkingSpot);
           }),
-        ).then(async () => {
-          await fetch('/api/reservations/current')
+        ).then(() => {
+          fetch('/api/reservations/current')
             .then((resp) => resp.json())
             .then((reservations) =>
               reservations.forEach((reservation: Reservation) => {
