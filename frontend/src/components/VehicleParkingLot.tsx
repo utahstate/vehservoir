@@ -2,7 +2,16 @@ import React, { useEffect, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
 import { useReservationSocket } from '../hooks/UseReservationSocket';
 
-// RIP to anyone who has to deal with this
+/*
+ _____
+/     \
+vvvvvvv  /|__/|
+   I   /O,O   |
+   I /_____   |      /|/|
+  J|/^ ^ ^ \  |    /00  |    _//|
+   |^ ^ ^ ^ |W|   |/^^\ |   /oo |
+   \m___m__|_|    \m_m_|   \mm_|
+*/
 
 interface Dimension {
   width: number;
@@ -130,16 +139,17 @@ class Vehicle extends Entity {
         Math.sqrt(
           Math.pow(this.path[0].x - this.position.x, 2) +
             Math.pow(this.path[0].y - this.position.y, 2),
-        ) <= Vehicle.THRESHOLD
+        ) <= Vehicle.THRESHOLD // Snaps to destination when we get close
       ) {
         const oldPath = this.path[0];
         this.path.shift();
-        this.position = oldPath;
+        this.position = oldPath; // Further exploration to previous position just in case we've overshot
         if (!this.path.length) {
+          // We've reached the destination - stop moving
           this.velocity.dx = 0;
           this.velocity.dy = 0;
           if (this.onReachDestination) {
-            this.onReachDestination();
+            this.onReachDestination(); // Resolve the promise
             this.onReachDestination = null;
           }
         } else {
@@ -154,6 +164,7 @@ class Vehicle extends Entity {
         }
       }
     } else if (this.parkingSpot) {
+      // Snap to the middle of the parking spot
       this.position = {
         x: this.parkingSpot.position.x + this.parkingSpot.dimensions.width / 2,
         y: this.parkingSpot.position.y + this.parkingSpot.dimensions.height / 2,
@@ -220,6 +231,7 @@ class ParkingLot extends Entity {
   }
 
   gaps() {
+    // Finds the y-level gaps in the parking spot between parking sections
     const yRanges = this.parkingSections
       .sort((a, b) => a.position.y - b.position.y)
       .map((section) => ({
@@ -243,6 +255,7 @@ class ParkingLot extends Entity {
   }
 
   gapPoints() {
+    // Calculates the midpoint of each gap
     return this.gaps()
       .map(({ start, end }) => {
         const y = (start + end) / 2;
@@ -258,6 +271,8 @@ class ParkingLot extends Entity {
     parkingSpot.occupied = true;
     vehicle.parkingSpot = parkingSpot;
 
+    // Find the y level to the closest gap to the parking spot - this will be the
+    // entrance for the vehicle to park
     const yLevelEntrance = this.gapPoints()
       .map((x) => x.y)
       .reduce(
@@ -274,6 +289,7 @@ class ParkingLot extends Entity {
         { y: 0, dist: Infinity },
       ).y;
     return new Promise((resolve) => {
+      // Create a path to follow
       vehicle.setPath(
         [
           vehicle.position,
@@ -287,7 +303,7 @@ class ParkingLot extends Entity {
               parkingSpot.dimensions.width / 2 +
               ((vehicle.position.x < parkingSpot.position.x ? -1 : 1) *
                 vehicle.dimension.width) /
-                3,
+                3, // Add a cute "turn" before getting into the parking spot
             y: yLevelEntrance,
           },
           {
@@ -308,6 +324,8 @@ class ParkingLot extends Entity {
     vehicle.parkingSpot.occupied = false;
     vehicle.parkingSpot = null;
 
+    // Find the midpoint of the y-level gap closest to the parking lot - this will
+    // be the exit point
     const exitPoint = this.gapPoints().reduce(
       (acc, point) => {
         const dist = Math.sqrt(
@@ -329,7 +347,7 @@ class ParkingLot extends Entity {
             x:
               vehicle.position.x +
               (exitPoint.x < vehicle.position.x ? 0.5 : -0.5) *
-                vehicle.dimension.width,
+                vehicle.dimension.width, // Add a cute "backing out" animation
             y: exitPoint.y,
           },
           {
@@ -348,12 +366,13 @@ class ParkingLot extends Entity {
     { height, width }: Dimension,
     { height: parkingSpotHeight, width: parkingSpotWidth }: Dimension,
   ): ParkingSection[] {
+    // Creates the optimal parking lot layout to maximize parking spaces.
     const parkingSections: ParkingSection[] = [];
 
     const maxParkingRows = Math.floor(height / parkingSpotHeight);
     const spots = Math.floor(width / parkingSpotWidth);
 
-    const numDividers = Math.ceil(maxParkingRows / 3); // The minimum number of gaps between sections
+    const numDividers = Math.ceil(maxParkingRows / 3);
     const dividerHeight =
       (height - maxParkingRows * parkingSpotHeight) / numDividers +
       parkingSpotHeight;
@@ -364,6 +383,7 @@ class ParkingLot extends Entity {
       doubleSections: number,
       placeSingle = true,
     ): void => {
+      // Here be magic.
       if (doubleSections === 0 && singleSections === 0) {
         return;
       }
@@ -427,6 +447,8 @@ class ParkingLot extends Entity {
       parkingSpotDimension,
     );
 
+    // Calculate individual parking spot dimensions and positions, construct a ParkingSpot,
+    // add to the parkingSpots array
     for (const section of this.parkingSections) {
       for (let i = 0; i < section.spots; i++) {
         for (
@@ -497,8 +519,10 @@ export const VehicleParkingLot = () => {
   const [currentReservations, setCurrentReservations] = useState<Reservation[]>(
     [],
   );
+  const messagesRef = useRef<HTMLDivElement>(null);
 
   const saveCurrentReservation = (reservation: Reservation) => {
+    // Overwrites the previous reservation with the same vehicle id
     setCurrentReservations((currentReservations: Reservation[]) => [
       ...(currentReservations.filter(
         (r: Reservation) => r.vehicle.id !== reservation.vehicle.id,
@@ -508,6 +532,7 @@ export const VehicleParkingLot = () => {
   };
 
   const removeCurrentReservation = (reservation: Reservation) => {
+    // Removes the current reservation with the same vehicle id
     setCurrentReservations((currentReservations: Reservation[]) =>
       currentReservations.filter(
         (r: Reservation) => r.vehicle.id !== reservation.vehicle.id,
@@ -554,6 +579,7 @@ export const VehicleParkingLot = () => {
         new Date(reservation.end).getTime() > Date.now() &&
         referencedVehicle?.parkingSpot
       ) {
+        // Ensure we are not unparking a vehicle if the reservation is already over
         toast(`${reservation.vehicle.name} is being reserved`);
         parkingLot.unParkVehicle(referencedVehicle, randomExitPoint());
       }
@@ -564,6 +590,7 @@ export const VehicleParkingLot = () => {
       );
 
       if (referencedVehicle?.parkingSpot) {
+        // No need to re-park a vehicle if it's already parked
         return;
       }
       toast(`${reservation.vehicle.name} is done being reserved`);
@@ -577,6 +604,8 @@ export const VehicleParkingLot = () => {
           );
         };
         if (referencedVehicle.path.length) {
+          // We will wait until the current path is done being traveled by the vehicle before
+          // directing it back to the new parking spot
           referencedVehicle.onReachDestination = onReachDestination;
         } else {
           onReachDestination();
@@ -593,12 +622,14 @@ export const VehicleParkingLot = () => {
           referencedReservation.start.getTime() <
             new Date(reservation.start).getTime()
         ) {
+          // We will only remove the reservation if the new start time for it is in the future -
+          // the server will send us a reservationStarted when it is started again
           const vehicle = parkingLot.vehicles.find(
             (vehicle) => vehicle.id === referencedReservation.vehicle.id,
           );
-          if (vehicle) {
+          if (vehicle && !vehicle.parkingSpot) {
             toast(
-              `Reservation for vehicle ${reservation.vehicle} has been changed`,
+              `Reservation for vehicle ${reservation.vehicle.name} has been changed`,
             );
             parkingLot.parkVehicle(
               vehicle,
@@ -616,7 +647,7 @@ export const VehicleParkingLot = () => {
     fetch('/api/vehicles')
       .then((vehicleResponse) => vehicleResponse.json())
       .then((vehicles) => {
-        const vehicleObjs = vehicles.map(
+        parkingLot.vehicles = vehicles.map(
           (vehicle: { color: string; id: number }) =>
             new Vehicle(
               {
@@ -629,7 +660,7 @@ export const VehicleParkingLot = () => {
             ),
         );
 
-        parkingLot.vehicles = vehicleObjs;
+        // Wait until all vehicles are done parking before we do any reservation stuffs
         Promise.all(
           parkingLot.vehicles.map((vehicle) => {
             const parkingSpot = parkingLot.randomUnassignedParkingSpot();
@@ -646,6 +677,8 @@ export const VehicleParkingLot = () => {
               reservations.forEach((reservation: Reservation) => {
                 saveCurrentReservation({
                   ...reservation,
+                  // We will get a string from the backend for the start and end dates -
+                  // cast them to Date's
                   start: new Date(reservation.start),
                   end: new Date(reservation.end),
                 });
@@ -653,6 +686,7 @@ export const VehicleParkingLot = () => {
                   reservation.vehicle.id,
                 );
                 if (referencedVehicle) {
+                  // Send them to the ranch!
                   parkingLot.unParkVehicle(
                     referencedVehicle,
                     randomExitPoint(),
@@ -684,6 +718,7 @@ export const VehicleParkingLot = () => {
 
     let animationFrameId: number;
     const loop = () => {
+      // "game" loop
       const now = Date.now();
       const delta = now - lastUpdate;
 
@@ -700,24 +735,35 @@ export const VehicleParkingLot = () => {
     };
     loop();
     return () => {
+      // No need to render the canvas after the component unmounts
       window.cancelAnimationFrame(animationFrameId);
     };
   }, []);
 
   useEffect(() => {
+    // Pause the visualization when we change tabs to remove "jerk" effects (it would still be
+    // updating in the background)
+
     window.onblur = () => (isPaused = true);
     window.onfocus = () => (isPaused = false);
 
+    // Update the reservation progress bars every second by forcing a useState change
     const updateReservationProgress = setInterval(() => {
-      setCurrentReservations((reservations: Reservation[]) => [
-        ...reservations,
-      ]);
+      setCurrentReservations((reservations: Reservation[]) => reservations);
     }, 1000);
 
     return () => {
+      // Cleanup the interval after the component unmounts
       clearInterval(updateReservationProgress);
     };
   }, []);
+
+  useEffect(() => {
+    // Scroll to the bottom of messages when it changes
+    if (messagesRef.current) {
+      messagesRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [timeline]);
 
   return (
     <div
@@ -758,16 +804,21 @@ export const VehicleParkingLot = () => {
         style={{ border: '1px solid black' }}
       />
 
-      <div style={{ height: '30%', overflow: 'scroll' }}>
-        <div className="terminal-timeline">
-          {timeline.map((event) => (
-            <div className="terminal-card" key={Math.random() * 2000}>
-              <header>{event.header}</header>
-              <div>{event.message}</div>
-            </div>
-          ))}
+      {timeline.length ? (
+        <div style={{ height: '30vh', overflow: 'scroll' }}>
+          <div className="terminal-timeline">
+            {timeline.map((event) => (
+              <div className="terminal-card" key={Math.random() * 2000}>
+                <header>{event.header}</header>
+                <div>{event.message}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ float: 'left', clear: 'both' }} ref={messagesRef}></div>
         </div>
-      </div>
+      ) : (
+        <></>
+      )}
     </div>
   );
 };

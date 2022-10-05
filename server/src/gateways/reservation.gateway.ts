@@ -63,7 +63,7 @@ export class ReservationGateway {
     if (this.reservationTimeouts.has(reservation.id)) {
       clearTimeout(this.reservationTimeouts.get(reservation.id));
     }
-    this.server.emit('reservationEnded', reservation);
+    this.server.emit('reservationDeleted', reservation);
     this.reservationTimeouts.delete(reservation.id);
   }
 }

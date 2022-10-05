@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DeleteResult, LessThanOrEqual, Repository } from 'typeorm';
 import { Reservation } from 'src/entities/reservation';
 import { Cron } from '@nestjs/schedule';
-import { ReservationGateway } from 'src/gateways/reservation';
+import { ReservationGateway } from 'src/gateways/reservation.gateway';
 
 const EXPIRED_RESERVATION_THRESHOLD_SEC = 60 * 60 * 24 * 20; // Twenty days
 
@@ -73,7 +73,7 @@ export class ReservationService {
   }
 
   async remove(reservation: Reservation): Promise<DeleteResult> {
-    // Load the vehicle to emit to the frontend
+    // Load the vehicle to emit to the frontend before removing it
     reservation = await this.findOne(reservation, { vehicle: true });
 
     this.reservationGateway.handleReservationDeleted(reservation);
