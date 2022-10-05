@@ -73,6 +73,10 @@ export class ReservationService {
   }
 
   async remove(reservation: Reservation): Promise<DeleteResult> {
+    // Load the vehicle to emit to the frontend
+    reservation = await this.findOne(reservation, { vehicle: true });
+
+    this.reservationGateway.handleReservationDeleted(reservation);
     return this.reservationRepo.delete(reservation);
   }
 }

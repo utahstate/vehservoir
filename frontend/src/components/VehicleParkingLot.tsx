@@ -1,5 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { toast } from 'react-toastify';
 import { useReservationSocket } from '../hooks/UseReservationSocket';
+
+// RIP to anyone who has to deal with this
 
 interface Dimension {
   width: number;
@@ -456,6 +459,16 @@ class ParkingLot extends Entity {
   }
 }
 
+export interface Reservation {
+  id: number;
+  start: Date;
+  end: Date;
+  vehicle: {
+    id: number;
+    name: string;
+  };
+}
+
 const line = (
   ctx: CanvasRenderingContext2D,
   x1: number,
@@ -469,36 +482,93 @@ const line = (
   ctx.stroke();
 };
 
-const CanvasDimensions = {
+const CanvasDimensions: Dimension = {
   width: 1000,
   height: 700,
 };
 
+const VehicleDimensions: Dimension = {
+  width: 50,
+  height: 70,
+};
+
 export const VehicleParkingLot = () => {
+  let isPaused = false;
+  const [currentReservations, setCurrentReservations] = useState<Reservation[]>(
+    [],
+  );
+
+  const saveCurrentReservation = (reservation: Reservation) => {
+    setCurrentReservations((currentReservations: Reservation[]) => [
+      ...(currentReservations.filter(
+        (r: Reservation) => r.vehicle.id !== reservation.vehicle.id,
+      ) ?? []),
+      reservation,
+    ]);
+  };
+
+  const removeCurrentReservation = (reservation: Reservation) => {
+    setCurrentReservations((currentReservations: Reservation[]) =>
+      currentReservations.filter(
+        (r: Reservation) => r.vehicle.id !== reservation.vehicle.id,
+      ),
+    );
+  };
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const { reservations } = useReservationSocket({
-    onReservationStarted: (reservation: {
-      end: string;
-      vehicle: { id: number };
-    }) => {
+
+  const parkingLot = new ParkingLot(
+    {
+      width: CanvasDimensions.width - 200,
+      height: CanvasDimensions.height,
+    },
+    {
+      width: VehicleDimensions.width * 1.5,
+      height: VehicleDimensions.height * (5 / 4),
+    },
+    {
+      x: 100,
+      y: 0,
+    },
+    [],
+  );
+
+  const randomExitPoint = (): Position => ({
+    x:
+      Math.random() * 2 > 1
+        ? CanvasDimensions.width + VehicleDimensions.width
+        : -VehicleDimensions.width,
+    y: Math.random() * CanvasDimensions.height,
+  });
+
+  const { timeline } = useReservationSocket({
+    onReservationStarted: (reservation: Reservation) => {
+      saveCurrentReservation({
+        ...reservation,
+        start: new Date(reservation.start),
+        end: new Date(reservation.end),
+      });
       const referencedVehicle = parkingLot.findVehicle(reservation.vehicle.id);
-      console.log(referencedVehicle, ' was reserved');
 
       if (
         new Date(reservation.end).getTime() > Date.now() &&
-        referencedVehicle &&
-        referencedVehicle.parkingSpot
+        referencedVehicle?.parkingSpot
       ) {
-        parkingLot.unParkVehicle(referencedVehicle, {
-          x: 0,
-          y: -100,
-        });
+        toast(`${reservation.vehicle.name} is being reserved`);
+        parkingLot.unParkVehicle(referencedVehicle, randomExitPoint());
       }
     },
-    onReservationEnded: (reservation: { vehicle: { id: number } }) => {
+    onReservationEnded: (reservation: Reservation) => {
       const referencedVehicle = parkingLot.vehicles.find(
         (vehicle) => vehicle.id === reservation.vehicle.id,
       );
+
+      if (referencedVehicle?.parkingSpot) {
+        return;
+      }
+      toast(`${reservation.vehicle.name} is done being reserved`);
+      removeCurrentReservation(reservation);
+
       if (referencedVehicle) {
         const onReachDestination = () => {
           parkingLot.parkVehicle(
@@ -508,28 +578,39 @@ export const VehicleParkingLot = () => {
         };
         if (referencedVehicle.path.length) {
           referencedVehicle.onReachDestination = onReachDestination;
-        } else if (!referencedVehicle.parkingSpot) {
+        } else {
           onReachDestination();
         }
       }
     },
+    onReservationSaved: (reservation: Reservation) => {
+      setCurrentReservations((currentReservations) => {
+        const referencedReservation = currentReservations.find(
+          (r) => r.id === reservation.id,
+        );
+        if (
+          referencedReservation &&
+          referencedReservation.start.getTime() <
+            new Date(reservation.start).getTime()
+        ) {
+          const vehicle = parkingLot.vehicles.find(
+            (vehicle) => vehicle.id === referencedReservation.vehicle.id,
+          );
+          if (vehicle) {
+            toast(
+              `Reservation for vehicle ${reservation.vehicle} has been changed`,
+            );
+            parkingLot.parkVehicle(
+              vehicle,
+              parkingLot.randomUnassignedParkingSpot(),
+            );
+          }
+          return currentReservations.filter((r) => r.id !== reservation.id);
+        }
+        return currentReservations;
+      });
+    },
   });
-  let isPaused = false;
-  const parkingLot = new ParkingLot(
-    {
-      width: CanvasDimensions.width - 200,
-      height: CanvasDimensions.height,
-    },
-    {
-      width: 80,
-      height: 100,
-    },
-    {
-      x: 100,
-      y: 0,
-    },
-    [],
-  );
 
   useEffect(() => {
     fetch('/api/vehicles')
@@ -539,10 +620,10 @@ export const VehicleParkingLot = () => {
           (vehicle: { color: string; id: number }) =>
             new Vehicle(
               {
-                x: Math.random() * 2 > 1 ? 0 : CanvasDimensions.width - 50,
-                y: Math.random() * CanvasDimensions.height,
+                x: 0,
+                y: 0,
               },
-              { width: 60, height: 80 },
+              VehicleDimensions,
               vehicle.color,
               vehicle.id,
             ),
@@ -550,35 +631,38 @@ export const VehicleParkingLot = () => {
 
         parkingLot.vehicles = vehicleObjs;
         Promise.all(
-          parkingLot.vehicles.map((vehicle, i) =>
-            parkingLot.parkVehicle(
-              parkingLot.vehicles[i],
-              parkingLot.parkingSpots[i],
-            ),
-          ),
-        ).then(() => {
-          fetch('/api/reservations/current')
+          parkingLot.vehicles.map((vehicle) => {
+            const parkingSpot = parkingLot.randomUnassignedParkingSpot();
+            vehicle.position = {
+              ...randomExitPoint(),
+              y: parkingSpot.position.y,
+            };
+            return parkingLot.parkVehicle(vehicle, parkingSpot);
+          }),
+        ).then(async () => {
+          await fetch('/api/reservations/current')
             .then((resp) => resp.json())
             .then((reservations) =>
-              reservations.forEach(
-                (reservation: { vehicle: { id: number } }) => {
-                  console.log(reservation, ' is a reservation');
-                  const referencedVehicle = parkingLot.findVehicle(
-                    reservation.vehicle.id,
+              reservations.forEach((reservation: Reservation) => {
+                saveCurrentReservation({
+                  ...reservation,
+                  start: new Date(reservation.start),
+                  end: new Date(reservation.end),
+                });
+                const referencedVehicle = parkingLot.findVehicle(
+                  reservation.vehicle.id,
+                );
+                if (referencedVehicle) {
+                  parkingLot.unParkVehicle(
+                    referencedVehicle,
+                    randomExitPoint(),
                   );
-                  if (referencedVehicle) {
-                    parkingLot.unParkVehicle(referencedVehicle, { x: 0, y: 0 });
-                  }
-                },
-              ),
+                }
+              }),
             );
         });
       });
   }, []);
-
-  useEffect(() => {
-    console.log(reservations);
-  }, [reservations]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -615,12 +699,23 @@ export const VehicleParkingLot = () => {
       animationFrameId = requestAnimationFrame(loop);
     };
     loop();
+    return () => {
+      window.cancelAnimationFrame(animationFrameId);
+    };
+  }, []);
 
+  useEffect(() => {
     window.onblur = () => (isPaused = true);
     window.onfocus = () => (isPaused = false);
 
+    const updateReservationProgress = setInterval(() => {
+      setCurrentReservations((reservations: Reservation[]) => [
+        ...reservations,
+      ]);
+    }, 1000);
+
     return () => {
-      window.cancelAnimationFrame(animationFrameId);
+      clearInterval(updateReservationProgress);
     };
   }, []);
 
@@ -634,6 +729,28 @@ export const VehicleParkingLot = () => {
         gap: '1rem',
       }}
     >
+      <div>
+        {currentReservations.map((reservation: Reservation) => {
+          return (
+            <div key={reservation.id}>
+              <div>{reservation.vehicle.name}</div>
+              <div className="progress-bar">
+                <div
+                  className="progress-bar-filled"
+                  style={{
+                    width: `${Math.floor(
+                      (100 * (Date.now() - reservation.start.getTime())) /
+                        (reservation.end.getTime() -
+                          reservation.start.getTime()),
+                    )}%`,
+                  }}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
       <canvas
         ref={canvasRef}
         width={CanvasDimensions.width}
@@ -641,8 +758,15 @@ export const VehicleParkingLot = () => {
         style={{ border: '1px solid black' }}
       />
 
-      <div className="progress-bar">
-        <div className="progress-bar-filled" style={{ width: '40%' }}></div>
+      <div style={{ height: '30%', overflow: 'scroll' }}>
+        <div className="terminal-timeline">
+          {timeline.map((event) => (
+            <div className="terminal-card" key={Math.random() * 2000}>
+              <header>{event.header}</header>
+              <div>{event.message}</div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

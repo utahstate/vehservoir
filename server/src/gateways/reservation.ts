@@ -50,20 +50,20 @@ export class ReservationGateway {
     if (this.reservationTimeouts.has(reservation.id)) {
       clearTimeout(this.reservationTimeouts.get(reservation.id));
     }
-    console.log(reservation.start.getTime(), Date.now());
     this.reservationTimeouts.set(
       reservation.id,
       setTimeout(() => {
         this.maybeRemindClientsOfReservation(reservation);
       }, Math.max(0, reservation.start.getTime() - Date.now()) + TIMEOUT_ENSURE_DELTA_MS),
     );
-    this.server.emit('reservationCreated', reservation);
+    this.server.emit('reservationSaved', reservation);
   }
 
-  async handleReservationDeleted(reservation: any) {
+  async handleReservationDeleted(reservation: Reservation) {
     if (this.reservationTimeouts.has(reservation.id)) {
       clearTimeout(this.reservationTimeouts.get(reservation.id));
     }
-    this.server.emit('reservationDeleted', reservation);
+    this.server.emit('reservationEnded', reservation);
+    this.reservationTimeouts.delete(reservation.id);
   }
 }
