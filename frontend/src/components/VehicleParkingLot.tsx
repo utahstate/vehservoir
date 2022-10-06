@@ -113,7 +113,7 @@ class ParkingSection {
 
     ctx.lineWidth = 2;
     ctx.strokeStyle = 'white';
-    for (let xi = x; xi <= x + width; xi += width / this.spots) {
+    for (let xi = x; xi <= x + width; xi += Math.floor(width / this.spots)) {
       line(ctx, xi, y, xi, y + height);
     }
 
@@ -125,13 +125,15 @@ class ParkingSection {
 
 class Vehicle extends Entity {
   id: number;
+  name: string;
   color: string;
   parkingSpot: ParkingSpot | null;
   path: Position[] = [];
   onReachDestination: (() => void) | null = null;
 
-  static PARKING_SPEED = 6;
+  static SPEED = 0.25;
   static THRESHOLD = 35;
+  static FONT_FACE = 'var(--font-stack)';
 
   update(dt: number) {
     super.update(dt);
@@ -158,10 +160,8 @@ class Vehicle extends Entity {
           const dx = x - this.position.x;
           const dy = y - this.position.y;
           const dist = Math.sqrt(dx * dx + dy * dy);
-          this.velocity.dx =
-            (x - this.position.x) / (dist * Vehicle.PARKING_SPEED);
-          this.velocity.dy =
-            (y - this.position.y) / (dist * Vehicle.PARKING_SPEED);
+          this.velocity.dx = (x - this.position.x) / (dist / Vehicle.SPEED);
+          this.velocity.dy = (y - this.position.y) / (dist / Vehicle.SPEED);
         }
       }
     } else if (this.parkingSpot) {
@@ -183,6 +183,32 @@ class Vehicle extends Entity {
     this.initDraw(ctx, (ctx, position: Position) => {
       ctx.fillStyle = this.color;
       ctx.fillRect(position.x, position.y, width, height);
+      ctx.fillStyle = getBrightness(this.color) > 127 ? 'black' : 'white';
+
+      const lines = this.name.split(' ');
+
+      ctx.font = `1px ${Vehicle.FONT_FACE}`;
+      const fontSize =
+        (this.dimension.width - 10) /
+        lines.reduce(
+          (acc, line) => Math.max(ctx.measureText(line).width, acc),
+          -Infinity,
+        );
+      ctx.font = `${fontSize}px ${Vehicle.FONT_FACE}`;
+
+      ctx.textAlign = 'center';
+
+      ctx.fillStyle = getBrightness(this.color) > 127 ? 'black' : 'white';
+      lines.forEach((line, i) => {
+        const [x, y] = [
+          position.x + this.dimension.width / 2,
+          position.y +
+            this.dimension.height / 2 +
+            (i - (lines.length - 1) / 2) * fontSize,
+        ];
+
+        ctx.fillText(line, x, y);
+      });
     });
   }
 
@@ -191,11 +217,13 @@ class Vehicle extends Entity {
     dimension: Dimension,
     color: string,
     id: number,
+    name: string,
   ) {
     super(position, dimension, { dx: 0, dy: 0 }, 0, 0);
     this.id = id;
     this.color = color;
     this.parkingSpot = null;
+    this.name = name;
   }
 }
 
@@ -506,13 +534,23 @@ const line = (
 };
 
 const CanvasDimensions: Dimension = {
-  width: 1000,
-  height: 700,
+  width: 1300,
+  height: 1000,
 };
 
 const VehicleDimensions: Dimension = {
-  width: 50,
-  height: 70,
+  width: 90,
+  height: 121,
+};
+
+const getBrightness = (hexColor: string) => {
+  const hexValue = parseInt(hexColor.split('#')[1], 16);
+  const [r, g, b] = [
+    (hexValue >>> 16) & parseInt('FF', 16),
+    (hexValue >>> 8) & parseInt('FF', 16),
+    hexValue & parseInt('FF', 16),
+  ];
+  return Math.round((r * 299 + g * 587 + b * 114) / 1000);
 };
 
 export const VehicleParkingLot = () => {
@@ -662,6 +700,7 @@ export const VehicleParkingLot = () => {
             VehicleDimensions,
             vehicle.type.color,
             vehicle.id || 0,
+            vehicle.name,
           );
         });
 
@@ -680,6 +719,7 @@ export const VehicleParkingLot = () => {
             .then((resp) => resp.json())
             .then((reservations) =>
               reservations.forEach((reservation: Reservation) => {
+                toast(`${reservation.vehicle.name} has a current reservation`);
                 saveCurrentReservation({
                   ...reservation,
                   // We will get a string from the backend for the start and end dates -
@@ -754,7 +794,9 @@ export const VehicleParkingLot = () => {
 
     // Update the reservation progress bars every second by forcing a useState change
     const updateReservationProgress = setInterval(() => {
-      setCurrentReservations((reservations: Reservation[]) => reservations);
+      setCurrentReservations((reservations: Reservation[]) => [
+        ...reservations,
+      ]);
     }, 1000);
 
     return () => {
@@ -784,7 +826,15 @@ export const VehicleParkingLot = () => {
         {currentReservations.map((reservation: Reservation) => {
           return (
             <div key={reservation.id}>
-              <div>{reservation.vehicle.name}</div>
+              <div>
+                {reservation.vehicle.name}&apos;s reservation will end in
+                <span style={{ color: 'green' }}>
+                  {' ' +
+                    new Date(reservation.end.getTime() - Date.now())
+                      .toISOString()
+                      .substring(11, 19)}
+                </span>
+              </div>
               <div className="progress-bar">
                 <div
                   className="progress-bar-filled"
@@ -827,10 +877,10 @@ export const VehicleParkingLot = () => {
       </div>
 
       {timeline.length ? (
-        <div style={{ height: '30vh', overflow: 'scroll' }}>
+        <div style={{ height: '20vh', overflow: 'scroll' }}>
           <div className="terminal-timeline">
             {timeline.map((event) => (
-              <div className="terminal-card" key={Math.random() * 2000}>
+              <div className="terminal-card" key={event.eventId}>
                 <header>{event.header}</header>
                 <div>{event.message}</div>
               </div>
