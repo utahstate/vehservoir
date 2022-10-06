@@ -59,7 +59,9 @@ export class VehicleController {
   ): Promise<Vehicle> {
     const vehicle = new Vehicle();
     vehicle.name = vehiclePayload.name;
-    vehicle.type = await this.getOrCreateTypeFromBodyOrFail(vehiclePayload);
+    vehicle.type = await this.vehicleService.findOrCreateType(
+      vehiclePayload.type,
+    );
 
     return await this.vehicleService.save(vehicle);
   }
@@ -79,7 +81,9 @@ export class VehicleController {
       vehicle.name = vehiclePayload.name;
     }
     if (vehiclePayload.type) {
-      vehicle.type = await this.getOrCreateTypeFromBodyOrFail(vehiclePayload);
+      vehicle.type = await this.vehicleService.findOrCreateType(
+        vehiclePayload.type,
+      );
     }
 
     return await this.vehicleService.save(vehicle);
@@ -128,14 +132,5 @@ export class VehicleController {
       ),
       query.periodSeconds,
     );
-  }
-
-  private async getOrCreateTypeFromBodyOrFail(
-    vehiclePayload: VehicleCreationDto,
-  ): Promise<VehicleType> {
-    const type = await this.vehicleService.findOrCreateType(
-      vehiclePayload.type,
-    );
-    return type;
   }
 }

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Vehicle } from 'src/entities/vehicle';
 import { DeleteResult, Repository } from 'typeorm';
@@ -61,6 +61,15 @@ export class VehicleService {
     if (!vehicleType) {
       vehicleType = new VehicleType();
       vehicleType.name = type.name;
+
+      const previousTypeWithColor = await this.findTypeBy({
+        color: type.color,
+      });
+      if (previousTypeWithColor) {
+        throw new BadRequestException(
+          `Color already exists for ${previousTypeWithColor.name}`,
+        );
+      }
     }
     vehicleType.color = type.color;
     return await this.saveType(vehicleType);
