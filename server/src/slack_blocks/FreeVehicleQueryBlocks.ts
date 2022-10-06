@@ -14,6 +14,7 @@ interface FreeVehicleQueryBlocksProps {
   };
   params: {
     vehicleTypes: VehicleType[];
+    selectedVehicleType?: VehicleType;
     error?: string;
   };
 }
@@ -35,14 +36,23 @@ export const FreeVehicleQueryBlocks = ({
         Elements.StaticSelect({
           placeholder: 'Choose a vehicle type...',
           actionId: 'type',
-        }).options(
-          params.vehicleTypes.map((type) =>
+        })
+          .options(
+            params.vehicleTypes.map((type) =>
+              Bits.Option({
+                text: type.name,
+                value: type.id.toString(),
+              }),
+            ),
+          )
+          .initialOption(
             Bits.Option({
-              text: type.name,
-              value: type.id.toString(),
+              text: (params.selectedVehicleType || params.vehicleTypes[0]).name,
+              value: (
+                params.selectedVehicleType || params.vehicleTypes[0]
+              ).id.toString(),
             }),
           ),
-        ),
       ),
       Blocks.Input({
         label: 'Available Start Date',

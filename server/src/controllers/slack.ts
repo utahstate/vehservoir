@@ -11,9 +11,11 @@ import { applyTimezoneOffset, toTimeZone } from 'src/utils/dates';
 import { ReserveVehicleBlock } from 'src/slack_blocks/ReserveVehicleBlocks';
 import { Reservation } from 'src/entities/reservation';
 import { SlackRequestService } from 'src/services/slack_request';
-import { LessThanOrEqual, MoreThan, MoreThanOrEqual } from 'typeorm';
+import { ILike, LessThanOrEqual, MoreThan, MoreThanOrEqual } from 'typeorm';
 import { UnreserveBlocks } from 'src/slack_blocks/UnreserveBlocks';
 import { Cron } from '@nestjs/schedule';
+import { SlackUserPreferenceService } from 'src/services/slack_user_preference';
+import { SlackUserVehicleTypePreference } from 'src/entities/slack_user_vehicle_type_preference';
 
 export interface UnreserveViewState {
   reservations: {
@@ -74,7 +76,7 @@ export interface SlackUser {
   tz: string;
 }
 
-const FILL_FORM_MESSAGE = "Here's your requested form. Fill it out, bucko 📝.";
+const FILL_FORM_MESSAGE = "Here's that form for ya 📝.";
 const REMIND_MESSAGE_USER_THRESHOLD_SEC = 5 * 60;
 const formatErrors = (errors: string[]) =>
   errors.map((x) => `* ${x}`).join('\n');
@@ -94,11 +96,14 @@ export class SlackController {
     private vehicleService: VehicleService,
     private configService: ConfigService,
     private slackRequestService: SlackRequestService,
+    private slackUserPreferenceService: SlackUserPreferenceService,
   ) {
     this.viewStates = {};
   }
 
-  @Cron('*/30 * * * * *')
+  static DEFAULT_QUICKRESERVE_PERIOD_SEC = 60 * 60;
+
+  @Cron('*/15 * * * * *')
   async remindUsers() {
     const sendMessageMinDate = new Date(
       new Date().setSeconds(REMIND_MESSAGE_USER_THRESHOLD_SEC),
@@ -125,7 +130,7 @@ export class SlackController {
         (reservation.start.getTime() - Date.now()) / (1000 * 60),
       );
 
-      let message;
+      let message: string;
       if (minuteDifference < 0) {
         message = `Hello ${userName}, just following up on your reservation about ${Math.abs(
           minuteDifference,
@@ -204,6 +209,109 @@ export class SlackController {
     return FILL_FORM_MESSAGE;
   }
 
+  @Post('/api/slack/mypreference')
+  async myPreferenceCommand(@Body() req): Promise<string> {
+    const preference = await this.slackUserPreferenceService.findOneBy(
+      { slackUserId: req.user_id },
+      { vehicleType: true },
+    );
+    if (preference) {
+      return `Looks like you prefer to use ${preference.vehicleType.name}`;
+    }
+    return "You don't have a preference! Use `/prefer` to set one.";
+  }
+
+  @Post('/api/slack/quickreserve')
+  async quickReserveCommand(@Body() req): Promise<string> {
+    const vehicleType =
+      (req.text &&
+        (await this.vehicleService.findTypeBy({
+          name: ILike(req.text),
+        }))) ||
+      (
+        !req.text &&
+        (await this.slackUserPreferenceService.findOneBy(
+          { slackUserId: req.user_id },
+          { vehicleType: true },
+        ))
+      ).vehicleType;
+    if (!vehicleType) {
+      return `${await this.errorJoinVehicleTypes()} \nOr, set your vehicle type preference with \`/prefer\` and specify no vehicle type.`;
+    }
+
+    const [start, end] = [
+      new Date(),
+      new Date(
+        Date.now() + SlackController.DEFAULT_QUICKRESERVE_PERIOD_SEC * 1000,
+      ),
+    ];
+    const vehicleAvailabilities =
+      VehicleService.filterAvailabilitiesByPeriodExtension(
+        await this.vehicleService.vehicleFreePeriodsBy(
+          { type: vehicleType },
+          start,
+          end,
+        ),
+        SlackController.DEFAULT_QUICKRESERVE_PERIOD_SEC,
+      );
+
+    if (!vehicleAvailabilities.length) {
+      return `No quick reservations could be found for any vehicles with type \`${vehicleType.name}\`.\nUse \`/reserve\` for a more advanced reservation query.`;
+    }
+
+    const user = await this.getUserDetails(req.user_id);
+    const request = await this.slackRequestService.save({
+      slackUserId: user.id,
+      userName: user.real_name,
+    });
+
+    const reservation = await this.reservationService.save({
+      id: null,
+      start,
+      end,
+      request,
+      vehicle: vehicleAvailabilities[0].vehicle,
+    });
+
+    return `Made a reservation for ${
+      reservation.vehicle.name
+    } from ${toTimeZone(
+      reservation.start,
+      user.tz,
+    ).toLocaleString()} to ${toTimeZone(
+      reservation.end,
+      user.tz,
+    ).toLocaleString()}.`;
+  }
+
+  @Post('/api/slack/prefer')
+  async userPrefersVehicleType(@Body() req): Promise<string> {
+    const vehicleType = await this.vehicleService.findTypeBy({
+      name: ILike(req.text),
+    });
+    if (!vehicleType) {
+      return await this.errorJoinVehicleTypes();
+    }
+    const preference =
+      (await this.slackUserPreferenceService.findOneBy(
+        {
+          slackUserId: req.user_id,
+        },
+        { vehicleType: false },
+      )) || new SlackUserVehicleTypePreference();
+    preference.slackUserId = req.user_id;
+    preference.vehicleType = vehicleType;
+    await this.slackUserPreferenceService.save(preference);
+    return `Vehicle type preference updated to "${vehicleType.name}". Thanks!`;
+  }
+
+  private async errorJoinVehicleTypes() {
+    const vehicleTypes = await this.vehicleService.allVehicleTypes();
+    return `Vehicle type not found. Try any of the following: \`${vehicleTypes
+      .map((x) => `"${x.name}"`)
+      .join(', ')}\`.`;
+  }
+
   @Post('/api/slack/reserve')
   async reserveCommand(@Body() req): Promise<string> {
     const external_id = uuidv4();
@@ -211,6 +319,14 @@ export class SlackController {
     const viewState = {
       modal: ReserveModal.FINDING_VEHICLE,
       params: {
+        selectedVehicleType: (
+          await this.slackUserPreferenceService.findOneBy(
+            {
+              slackUserId: req.user_id,
+            },
+            { vehicleType: true },
+          )
+        ).vehicleType,
         vehicleTypes: await this.vehicleService.allVehicleTypes(),
       },
       user: await this.getUserDetails(req.user_id),
