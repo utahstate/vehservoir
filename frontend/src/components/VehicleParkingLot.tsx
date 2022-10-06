@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
+import { ToastContainerProps } from 'react-toastify/dist/types';
 import { useReservationSocket } from '../hooks/UseReservationSocket';
 import { VehicleData } from '../pages/admin/Vehicles';
 
@@ -533,6 +534,11 @@ const line = (
   ctx.stroke();
 };
 
+const toastParams: ToastContainerProps = {
+  theme: 'colored',
+  position: 'bottom-right',
+};
+
 const CanvasDimensions: Dimension = {
   width: 1300,
   height: 1000,
@@ -620,7 +626,10 @@ export const VehicleParkingLot = () => {
         referencedVehicle?.parkingSpot
       ) {
         // Ensure we are not unparking a vehicle if the reservation is already over
-        toast(`${reservation.vehicle.name} is being reserved`);
+        toast.info(
+          `${reservation.vehicle.name} is being reserved`,
+          toastParams,
+        );
         parkingLot.unParkVehicle(referencedVehicle, randomExitPoint());
       }
     },
@@ -633,7 +642,7 @@ export const VehicleParkingLot = () => {
         // No need to re-park a vehicle if it's already parked
         return;
       }
-      toast(`${reservation.vehicle.name} is done being reserved`);
+      toast.info(`${reservation.vehicle.name} is being reserved`, toastParams);
       removeCurrentReservation(reservation);
 
       if (referencedVehicle) {
@@ -668,9 +677,11 @@ export const VehicleParkingLot = () => {
             (vehicle) => vehicle.id === referencedReservation.vehicle.id,
           );
           if (vehicle && !vehicle.parkingSpot) {
-            toast(
+            toast.info(
               `Reservation for vehicle ${reservation.vehicle.name} has been changed`,
+              toastParams,
             );
+
             parkingLot.parkVehicle(
               vehicle,
               parkingLot.randomUnassignedParkingSpot(),
@@ -719,7 +730,10 @@ export const VehicleParkingLot = () => {
             .then((resp) => resp.json())
             .then((reservations) =>
               reservations.forEach((reservation: Reservation) => {
-                toast(`${reservation.vehicle.name} has a current reservation`);
+                toast.info(
+                  `${reservation.vehicle.name} has a current reservation`,
+                  toastParams,
+                );
                 saveCurrentReservation({
                   ...reservation,
                   // We will get a string from the backend for the start and end dates -
