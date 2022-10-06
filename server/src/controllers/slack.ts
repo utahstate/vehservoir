@@ -326,7 +326,7 @@ export class SlackController {
             },
             { vehicleType: true },
           )
-        ).vehicleType,
+        )?.vehicleType,
         vehicleTypes: await this.vehicleService.allVehicleTypes(),
       },
       user: await this.getUserDetails(req.user_id),
