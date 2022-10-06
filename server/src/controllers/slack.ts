@@ -234,7 +234,7 @@ export class SlackController {
           { slackUserId: req.user_id },
           { vehicleType: true },
         ))
-      ).vehicleType;
+      )?.vehicleType;
     if (!vehicleType) {
       return `${await this.errorJoinVehicleTypes()} \nOr, set your vehicle type preference with \`/prefer\` and specify no vehicle type.`;
     }
