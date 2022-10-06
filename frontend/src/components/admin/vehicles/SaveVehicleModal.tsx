@@ -25,7 +25,9 @@ const SaveVehicleModal: FC<VehicleModalProps> = ({
         if (vehicleTypeList.length) {
           setCurrentVehicleData({
             ...currentVehicleData,
-            type: vehicleTypeList[0],
+            type: currentVehicleData.type.name
+              ? currentVehicleData.type
+              : vehicleTypeList[0],
           });
         }
         setVehicleTypes(vehicleTypeList);
@@ -37,6 +39,7 @@ const SaveVehicleModal: FC<VehicleModalProps> = ({
       <>
         {error && <Alert error={error}></Alert>}
         <form
+          autoComplete="off"
           onSubmit={async (e) => {
             e.preventDefault();
             currentVehicleData.type.new = true;
@@ -78,14 +81,7 @@ const SaveVehicleModal: FC<VehicleModalProps> = ({
               </label>
               <input
                 type="color"
-                value={
-                  !isNewVehicleType
-                    ? vehicleTypes.find(
-                        (vehicleType) =>
-                          vehicleType.name === currentVehicleData.type.name,
-                      )?.color || '#FF0000'
-                    : currentVehicleData.type.color
-                }
+                value={currentVehicleData.type.color}
                 style={{
                   border: 'none',
                   appearance: 'none',
@@ -97,17 +93,6 @@ const SaveVehicleModal: FC<VehicleModalProps> = ({
                   backgroundColor: 'transparent',
                 }}
                 onChange={(e) => {
-                  setVehicleTypes((types) => {
-                    if (!isNewVehicleType) {
-                      types = types.map((type) =>
-                        type.name === currentVehicleData.type.name
-                          ? { ...type, color: e.target.value }
-                          : type,
-                      );
-                    }
-                    return types;
-                  });
-
                   setCurrentVehicleData({
                     ...currentVehicleData,
                     type: {
@@ -140,6 +125,9 @@ const SaveVehicleModal: FC<VehicleModalProps> = ({
                       ...currentVehicleData,
                       type: {
                         ...currentVehicleData.type,
+                        ...vehicleTypes.find(
+                          (type) => type.name === e.target.value,
+                        ),
                         name: e.target.value,
                         new: false,
                       },
