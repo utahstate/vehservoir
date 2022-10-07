@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { AdminSaveDto } from 'dto/auth/AdminSaveDto';
-import { Admin } from 'src/entities/admin';
+import { AdminSaveDto } from 'dto/auth/AdminSaveDto.dto';
+import { Admin } from 'src/entities/admin.entity';
 import { DeleteResult, Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';

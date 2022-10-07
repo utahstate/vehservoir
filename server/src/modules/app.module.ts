@@ -1,12 +1,12 @@
 import { Module } from '@nestjs/common';
-import { AppController } from 'src/controllers/app';
+import { AppController } from 'src/controllers/app.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 // VEHSERVOIR MODULES
-import { VehicleModule } from './vehicle';
-import { SlackModule } from './slack';
-import { ReservationModule } from './reservation';
-import { AdminModule } from './admin';
+import { VehicleModule } from './vehicle.module';
+import { SlackModule } from './slack.module';
+import { ReservationModule } from './reservation.module';
+import { AdminModule } from './admin.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 

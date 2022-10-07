@@ -1,5 +1,5 @@
 import { Modal, Blocks, Elements, Bits } from 'slack-block-builder';
-import { VehicleAvailability } from 'src/services/vehicle';
+import { VehicleAvailability } from 'src/services/vehicle.service';
 import { seperateDateRange } from 'src/utils/dates';
 
 interface ReserveVehicleBlockProps {

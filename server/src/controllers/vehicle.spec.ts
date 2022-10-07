@@ -1,10 +1,13 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { Test, TestingModule } from '@nestjs/testing';
-import { Vehicle } from 'src/entities/vehicle';
-import { VehicleType } from 'src/entities/vehicle_type';
-import { VehicleAvailability, VehicleService } from 'src/services/vehicle';
-import { VehicleController } from './vehicle';
-import { VehicleCreationDto } from 'dto/vehicles/Creation';
+import { Vehicle } from 'src/entities/vehicle.entity';
+import { VehicleType } from 'src/entities/vehicle_type.entity';
+import {
+  VehicleAvailability,
+  VehicleService,
+} from 'src/services/vehicle.service';
+import { VehicleController } from './vehicle.controller';
+import { VehicleCreationDto } from 'dto/vehicles/Creation.dto';
 import { HttpException } from '@nestjs/common';
 
 // Firstly mock the VehicleService database wrapper and create dummy data

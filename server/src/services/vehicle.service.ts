@@ -1,10 +1,10 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Vehicle } from 'src/entities/vehicle';
+import { Vehicle } from 'src/entities/vehicle.entity';
 import { DeleteResult, Repository } from 'typeorm';
-import { VehicleType } from 'src/entities/vehicle_type';
+import { VehicleType } from 'src/entities/vehicle_type.entity';
 import { subtractRanges } from 'src/utils/dates';
-import { Reservation } from 'src/entities/reservation';
+import { Reservation } from 'src/entities/reservation.entity';
 
 export interface VehicleAvailability {
   vehicle: Vehicle;

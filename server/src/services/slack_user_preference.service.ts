@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { SlackUserVehicleTypePreference } from 'src/entities/slack_user_vehicle_type_preference';
+import { SlackUserVehicleTypePreference } from 'src/entities/slack_user_vehicle_type_preference.entity';
 import { Repository } from 'typeorm';
 
 @Injectable()

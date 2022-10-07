@@ -1,6 +1,6 @@
 import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
-import { SlackUserVehicleTypePreference } from './slack_user_vehicle_type_preference';
-import { Vehicle } from './vehicle';
+import { SlackUserVehicleTypePreference } from './slack_user_vehicle_type_preference.entity';
+import { Vehicle } from './vehicle.entity';
 
 @Entity()
 export class VehicleType {

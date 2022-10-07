@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DeleteResult, LessThanOrEqual, Repository } from 'typeorm';
-import { Reservation } from 'src/entities/reservation';
+import { Reservation } from 'src/entities/reservation.entity';
 import { Cron } from '@nestjs/schedule';
 import { ReservationGateway } from 'src/gateways/reservation.gateway';
 

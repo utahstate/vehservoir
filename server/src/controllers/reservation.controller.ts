@@ -11,19 +11,21 @@ import {
   Query,
   Put,
 } from '@nestjs/common';
-import { ReservationService } from 'src/services/reservation';
-import { Reservation } from 'src/entities/reservation';
-import { ReservationDto } from 'dto/reservations/Reservation';
+import { ReservationService } from 'src/services/reservation.service';
+import { Reservation } from 'src/entities/reservation.entity';
+import { ReservationDto } from 'dto/reservations/Reservation.dto';
 import {
   Between,
   DeleteResult,
   LessThanOrEqual,
   MoreThanOrEqual,
 } from 'typeorm';
-import { VehicleService } from 'src/services/vehicle';
-import { Vehicle } from 'src/entities/vehicle';
+import { VehicleService } from 'src/services/vehicle.service';
+import { Vehicle } from 'src/entities/vehicle.entity';
 import { JwtAuthGuard } from 'src/auth/jwt_auth';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
 
+@ApiTags('reservation')
 @Controller()
 export class ReservationController {
   constructor(
@@ -32,11 +34,13 @@ export class ReservationController {
   ) {}
 
   @Get('/api/reservations')
+  @ApiOperation({ summary: 'Gets all reservations.' })
   async index(): Promise<Reservation[]> {
     return await this.reservationService.allReservations();
   }
 
   @Get('/api/reservations/current')
+  @ApiOperation({ summary: 'Gets current reservations.' })
   async getCurrentReservations(): Promise<Reservation[]> {
     return await this.reservationService.findReservationsBy(
       {
@@ -49,6 +53,7 @@ export class ReservationController {
 
   @UseGuards(JwtAuthGuard)
   @Delete('/api/reservation/:id')
+  @ApiOperation({ summary: 'Deletes a reservation given an id.' })
   async remove(@Param('id') id: number): Promise<DeleteResult> {
     const reservation = await this.reservationService.findOne({ id });
     if (!reservation) {
@@ -59,6 +64,7 @@ export class ReservationController {
 
   @UseGuards(JwtAuthGuard)
   @Put('/api/reservation/:id')
+  @ApiOperation({ summary: 'Updates a reservation given an id.' })
   async update(
     @Param('id') id: number,
     @Body() reservationPayload: ReservationDto,
@@ -79,6 +85,7 @@ export class ReservationController {
 
   @UseGuards(JwtAuthGuard)
   @Post('/api/reservation')
+  @ApiOperation({ summary: 'Creates a new reservation.' })
   async createReservation(
     @Body() reservationPayload: ReservationDto,
   ): Promise<Reservation> {
@@ -95,25 +102,6 @@ export class ReservationController {
     reservation.end = reservationPayload.end;
 
     return await this.reservationService.save(reservation);
-  }
-
-  @Get('/api/reservations/:vehicleId')
-  async getReservationsByVehicleId(
-    @Param('vehicleId') vehicleId: number,
-    @Query('start') start: Date,
-    @Query('end') end: Date,
-  ): Promise<Reservation[]> {
-    if (!(start && end) || start.getTime() >= end.getTime()) {
-      throw new HttpException('Invalid Dates', HttpStatus.BAD_REQUEST);
-    }
-
-    return await this.reservationService.findReservationsBy(
-      {
-        vehicle: { id: vehicleId },
-        start: Between(start, end),
-      },
-      { vehicle: true, request: true },
-    );
   }
 
   private async validatePayloadAndGetVehicleOrFail(
@@ -149,5 +137,25 @@ export class ReservationController {
     }
 
     return vehicle;
+  }
+
+  @Get('/api/reservations/:vehicleId')
+  @ApiOperation({ summary: 'Gets all reservations for a given vehicle id.' })
+  async getReservationsByVehicleId(
+    @Param('vehicleId') vehicleId: number,
+    @Query('start') start: Date,
+    @Query('end') end: Date,
+  ): Promise<Reservation[]> {
+    if (!(start && end) || start.getTime() >= end.getTime()) {
+      throw new HttpException('Invalid Dates', HttpStatus.BAD_REQUEST);
+    }
+
+    return await this.reservationService.findReservationsBy(
+      {
+        vehicle: { id: vehicleId },
+        start: Between(start, end),
+      },
+      { vehicle: true, request: true },
+    );
   }
 }
