@@ -1,8 +1,8 @@
 import { forwardRef, Inject } from '@nestjs/common';
 import { WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
 import { Server } from 'socket.io';
-import { Reservation } from 'src/entities/reservation';
-import { ReservationService } from 'src/services/reservation';
+import { Reservation } from 'src/entities/reservation.entity';
+import { ReservationService } from 'src/services/reservation.service';
 
 const TIMEOUT_ENSURE_DELTA_MS = 200;
 

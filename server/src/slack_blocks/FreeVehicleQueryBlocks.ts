@@ -1,5 +1,5 @@
 import { Modal, Blocks, Elements, Bits } from 'slack-block-builder';
-import { VehicleType } from 'src/entities/vehicle_type';
+import { VehicleType } from 'src/entities/vehicle_type.entity';
 import { applyTimezoneOffset, clockString, toTimeZone } from 'src/utils/dates';
 
 const DEFAULT_RESERVATION_PERIOD_HRS = 2;

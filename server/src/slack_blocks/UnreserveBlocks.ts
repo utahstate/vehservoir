@@ -1,7 +1,7 @@
 import { Modal, Blocks, Elements, Bits } from 'slack-block-builder';
-import { formatReservation } from 'src/controllers/slack';
+import { formatReservation } from 'src/controllers/slack.controller';
 
-import { Reservation } from 'src/entities/reservation';
+import { Reservation } from 'src/entities/reservation.entity';
 
 interface ReservationsBlocksProps {
   params: {

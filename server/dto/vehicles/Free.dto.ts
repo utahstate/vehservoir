@@ -55,9 +55,17 @@ const IsBefore = (property: string, validationOptions?: ValidationOptions) => {
 };
 
 export class Free {
+  /**
+   * The vehicle type for a given reservation.
+   * @example 'Golf Cart'
+   */
   @IsString()
   type: string;
 
+  /**
+   * The reservation's free period in seconds.
+   * @example 1800
+   */
   @IsNumber()
   @IsPositive()
   @Type(() => Number)
@@ -67,6 +75,10 @@ export class Free {
   })
   periodSeconds: number;
 
+  /**
+   * The start date and time of a reservation.
+   * @example 2022-10-04T20:33:37.029Z
+   */
   @IsDate()
   @Type(() => Date)
   @IsBefore('end', {
@@ -74,6 +86,10 @@ export class Free {
   })
   start: Date;
 
+  /**
+   * The end date and time of a reservation.
+   * @example 2022-10-04T21:03:37.029Z
+   */
   @IsDate()
   @Type(() => Date)
   @MinDate(new Date(), {

@@ -1,21 +1,22 @@
 import { Body, Controller, Post } from '@nestjs/common';
-import { ReservationService } from 'src/services/reservation';
-import { VehicleService } from 'src/services/vehicle';
+import { ReservationService } from 'src/services/reservation.service';
+import { VehicleService } from 'src/services/vehicle.service';
 import axios from 'axios';
 import { ConfigService } from '@nestjs/config';
 import { v4 as uuidv4 } from 'uuid';
 import { FreeVehicleQueryBlocks } from 'src/slack_blocks/FreeVehicleQueryBlocks';
-import { Free } from 'dto/vehicles/Free';
+import { Free } from 'dto/vehicles/Free.dto';
 import { validateSync } from 'class-validator';
 import { applyTimezoneOffset, toTimeZone } from 'src/utils/dates';
 import { ReserveVehicleBlock } from 'src/slack_blocks/ReserveVehicleBlocks';
-import { Reservation } from 'src/entities/reservation';
-import { SlackRequestService } from 'src/services/slack_request';
+import { Reservation } from 'src/entities/reservation.entity';
+import { SlackRequestService } from 'src/services/slack_request.service';
 import { ILike, LessThanOrEqual, MoreThan, MoreThanOrEqual } from 'typeorm';
 import { UnreserveBlocks } from 'src/slack_blocks/UnreserveBlocks';
 import { Cron } from '@nestjs/schedule';
-import { SlackUserPreferenceService } from 'src/services/slack_user_preference';
-import { SlackUserVehicleTypePreference } from 'src/entities/slack_user_vehicle_type_preference';
+import { SlackUserPreferenceService } from 'src/services/slack_user_preference.service';
+import { SlackUserVehicleTypePreference } from 'src/entities/slack_user_vehicle_type_preference.entity';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
 
 export interface UnreserveViewState {
   reservations: {
@@ -88,6 +89,7 @@ export const formatReservation = (reservation: Reservation, timeZone: string) =>
     .map((date) => date.toLocaleString('en-US', { timeZone }))
     .join(' - ');
 
+@ApiTags('slack')
 @Controller()
 export class SlackController {
   private viewStates: Record<string, ViewState>; // Preserves Slack modal state per view in memory
@@ -148,7 +150,14 @@ export class SlackController {
     });
   }
 
+  /**
+   * Processes the `/reservations` slack command, and generates a direct message to
+   * the correct user.
+   */
   @Post('/api/slack/reservations')
+  @ApiOperation({
+    summary: 'Creates an ephemeral message with a slack users reservations.',
+  })
   async userReservationsCommand(@Body() req): Promise<string> {
     const user = await this.getUserDetails(req.user_id);
 
@@ -169,7 +178,12 @@ export class SlackController {
     );
   }
 
+  /**
+   * Processes the `/unreserve` slack command, and prompts the user with a popup
+   * modal to select reservations to remove.
+   */
   @Post('/api/slack/unreserve')
+  @ApiOperation({ summary: 'Creates a modal for unreserving a reservation.' })
   async unreserveCommand(@Body() req): Promise<string> {
     const external_id = uuidv4();
 
@@ -209,7 +223,14 @@ export class SlackController {
     return FILL_FORM_MESSAGE;
   }
 
+  /**
+   * Processes the `/mypreference` command returning the current slack users
+   * vehicle type preference.
+   */
   @Post('/api/slack/mypreference')
+  @ApiOperation({
+    summary: 'Create a slack message with preference content.',
+  })
   async myPreferenceCommand(@Body() req): Promise<string> {
     const preference = await this.slackUserPreferenceService.findOneBy(
       { slackUserId: req.user_id },
@@ -221,7 +242,13 @@ export class SlackController {
     return "You don't have a preference! Use `/prefer` to set one.";
   }
 
+  /**
+   * Processes the `/quickreserve` slack command creating a reservation from the
+   * current time to an hour in the future. Uses the first available vehicle of type
+   * `user_preference`.
+   */
   @Post('/api/slack/quickreserve')
+  @ApiOperation({ summary: 'Creates a quick reservation.' })
   async quickReserveCommand(@Body() req): Promise<string> {
     const vehicleType =
       (req.text &&
@@ -284,7 +311,13 @@ export class SlackController {
     ).toLocaleString()}.`;
   }
 
+  /**
+   * Processes the `/prefer` slack command and allows a slack user
+   * to select a vehicle preference. This is later used to pre-populate
+   * the `/reserve` and `/quickreserve` commands.
+   */
   @Post('/api/slack/prefer')
+  @ApiOperation({ summary: 'Create a slack user type preference.' })
   async userPrefersVehicleType(@Body() req): Promise<string> {
     const vehicleType = await this.vehicleService.findTypeBy({
       name: ILike(req.text),
@@ -312,7 +345,12 @@ export class SlackController {
       .join(', ')}\`.`;
   }
 
+  /**
+   * Processes the `/reserve` slack command, and prompts the user with a popup
+   * modal to create a new reservation.
+   */
   @Post('/api/slack/reserve')
+  @ApiOperation({ summary: 'Creates a reservation from a slack request.' })
   async reserveCommand(@Body() req): Promise<string> {
     const external_id = uuidv4();
 
@@ -353,7 +391,14 @@ export class SlackController {
     return FILL_FORM_MESSAGE;
   }
 
+  /**
+   * Gets all modal events (ex. submission, close) from a slack request and uses the memory
+   * cache for each respective view to return the next modal in the correct page sequence.
+   */
   @Post('/api/slack/interactions')
+  @ApiOperation({
+    summary: 'Generates the correct modal given a slack request.',
+  })
   async getInteraction(@Body() body: { payload: string }): Promise<any> {
     const bodyPayload = JSON.parse(body.payload);
     const oldExternalId = bodyPayload.view.external_id;

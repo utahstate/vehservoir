@@ -5,8 +5,8 @@ import {
   OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import { Reservation } from './reservation';
-import { VehicleType } from './vehicle_type';
+import { Reservation } from './reservation.entity';
+import { VehicleType } from './vehicle_type.entity';
 
 @Entity()
 export class Vehicle {

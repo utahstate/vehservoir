@@ -6,8 +6,8 @@ import {
   OneToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import { Request } from './request';
-import { Vehicle } from './vehicle';
+import { Request } from './request.entity';
+import { Vehicle } from './vehicle.entity';
 
 @Entity()
 export class Reservation {
