@@ -10,7 +10,7 @@
     4.  [Deployment](#org5545ceb)
     5.  [Seeding](#org4c052d9)
 4.  [Testing](#org2c98da7)
-
+```
      __  __          __                                                         
     /\ \/\ \        /\ \                                             __         
     \ \ \ \ \     __\ \ \___     ____     __   _ __   __  __    ___ /\_\  _ __  
@@ -18,7 +18,7 @@
       \ \ \_/ \/\  __/\ \ \ \ \/\__, `\/\  __/\ \ \/ \ \ \_/ |/\ \L\ \ \ \ \ \/ 
        \ `\___/\ \____\\ \_\ \_\/\____/\ \____\\ \_\  \ \___/ \ \____/\ \_\ \_\ 
         `\/__/  \/____/ \/_/\/_/\/___/  \/____/ \/_/   \/__/   \/___/  \/_/\/_/ 
-
+```
 
 <a id="orgaa18786"></a>
 
@@ -26,6 +26,7 @@
 
 Vehservoir (vehicle reservation reservoir) is a vehicle reservation system for USU IT, with a slack integration and real-time parking-lot visualization.
 
+https://user-images.githubusercontent.com/25559600/194674481-bb52bc53-0ffb-48a5-8fdd-8f4a00caed12.mp4
 
 <a id="orgbbd3e6b"></a>
 
