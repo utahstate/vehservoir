@@ -1,10 +1,20 @@
-# Vehicle Reservation - Design Doc
+# Vehicle Reservation - Initial Design Doc
 
 The overall goal of this application is to provide a Slack interface for IT employees to reserve vehicles.
 
+## Note: This document may be out of date
+
+Some stuff has changed since writing the initial design doc.
+
+A picture is worth a thousand words:
+![Slack and realtime](slack_and_realtime.png)
+
+Please view the swagger API documentation for the final revision of this service pertaining to the admin service
+and other endpoints.
+
 ## Shortcomings of Previous Design
 
-In terms of user experience, the previous implementation was not up to par:
+In terms of user experience, the previous implementation was not perfect:
 
 * Integration with Outlook's calendar to schedule reservations: 
   + Requires creation of a new calendar for every single vehicle.
@@ -25,14 +35,14 @@ The proposed new design will consist of a REST API to manage vehicle reservation
 access to the reservation system, and a Slack integration to provide a convenient way to interface with the API
 without opening the frontend.
 
-![Example Slack Command Request](slack_request.png)
+Additionally, a fun real-time visualization will be made to show which vehicles are currently reserved.
 
 ### Requirements
 
-- [ ] A user can reserve a vehicle using a /slash command.
-- [ ] A user can filter vehicles by time available.
-- [ ] Vehicles cannot be double-booked in the same period.
-- [ ] If a request fails, form is re-sent to the user with pre-populated fields.
+- [X] A user can reserve a vehicle using a /slash command.
+- [X] A user can filter vehicles by time available.
+- [X] Vehicles cannot be double-booked in the same period.
+- [X] If a request fails, form is re-sent to the user with pre-populated fields.
 
 ### Database
 
@@ -43,16 +53,14 @@ The database might consist of four tables:
 1. A request table to store slack commands to the application
 2. A vehicle table to store vehicle information
 3. A vehicle type table to store different models of vehicles (van, golf cart, etc.)
-3. A reservation table referencing the vehicle table 
+3. A reservation table referencing a vehicle
 
 #### Request
 ```
  id: primary int,
- command_name: text,
- arg_body: text,
- response_url: text,
- slack_user_id: text,
- name: text
+ slackUserId: text,
+ userName: text,
+ slackReminderSent: boolean,
 ```
 
 Note that [`slack_user_id`](https://api.slack.com/interactivity/slash-commands#app_command_handling) is unique to 
@@ -138,22 +146,22 @@ the vehicle reservations.
 ## Milestones and Estimates
 
 ### M0 (1 week)
-- [ ] Project initiated - simple Nest.JS routes setup and rendered with React
-- [ ] Schema successfully migrated
-- [ ] Barebones API - can request Vehicles and Reservations
+- [X] Project initiated - simple Nest.JS routes setup and rendered with React
+- [X] Schema successfully migrated
+- [X] Barebones API - can request Vehicles and Reservations
 
 ### M1 (1.5 - 2.5 weeks)
-- [ ] Users can successfully make a vehicle reservation
-- [ ] Users can list their reservations
-- [ ] Users can filter vehicles by periods available
-- [ ] Safeguards implemented to prevent double booking
-- [ ] Calendar rendering vehicle reservations
-- [ ] Slack integration
+- [X] Users can successfully make a vehicle reservation
+- [X] Users can list their reservations
+- [X] Users can filter vehicles by periods available
+- [X] Safeguards implemented to prevent double booking
+- [X] Calendar rendering vehicle reservations
+- [X] Slack integration
 
 ### M2 (1 week)
-- [ ] "Bug free"
+- [X] "Bug free"
 - [ ] Slack app deployed to USU IT workspace
-- [ ] Documentation not covered in M0 and M1 "sprints"
+- [X] Documentation not covered in M0 and M1 "sprints"
 
 ## Going further
 
@@ -163,5 +171,5 @@ the current design is made with extensibility for these features in the future.
 * Vehicles have their own slots during which they can be reserved. No reservations for that can be made unless they
   are within those periods. (Consider making a new vehicle_reservation_periods table with a one-to-many relationship)
 * Some vehicles can only be reserved by certain users.
-* Many to many relationship between vehicles and reservations - allowing for reservations to be composed of multiple
+* Many to many relationship between vehicles and reservations - allowing for reservations to be related to multiple
   vehicles at a time.
