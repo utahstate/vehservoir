@@ -57,7 +57,9 @@ const Reservations = () => {
         <aside className="menu">
           {vehicleTypes.map((vehicleType) => (
             <div key={vehicleType.id}>
-              <h2 style={{ color: '#595959' }}>{vehicleType.name}</h2>
+              <h2 style={{ color: 'var(--secondary-color)' }}>
+                {vehicleType.name}
+              </h2>
               <nav>
                 <ul>
                   {vehicles
