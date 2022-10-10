@@ -5,7 +5,8 @@ import { ReservationsCalendar } from '../components/common/calendar/Reservations
 const Reservations = () => {
   const [vehicleTypes, setVehicleTypes] = useState([]);
   const [vehicles, setVehicles] = useState([]);
-  const [selectedVehicle, setSelectedVehicle] = useState({});
+  const [selectedVehicle, setSelectedVehicle] = useState(null);
+  const [selectedVehicleType, setSelectedVehicleType] = useState(null);
 
   const { vehicleId } = useParams();
 
@@ -57,9 +58,28 @@ const Reservations = () => {
         <aside className="menu">
           {vehicleTypes.map((vehicleType) => (
             <div key={vehicleType.id}>
-              <h2 style={{ color: 'var(--secondary-color)' }}>
+              <a
+                onClick={() => {
+                  setSelectedVehicle(null);
+                  setSelectedVehicleType(vehicleType);
+                }}
+                style={
+                  selectedVehicleType?.id === vehicleType?.id
+                    ? {
+                        fontSize: '1.5rem',
+                        fontFamily: 'var(--font-stack)',
+                        fontWeight: 900,
+                        background: 'var(--primary-color)',
+                        color: 'var(--invert-font-color)',
+                      }
+                    : {
+                        fontSize: '1.5rem',
+                        fontFamily: 'var(--font-stack)',
+                      }
+                }
+              >
                 {vehicleType.name}
-              </h2>
+              </a>
               <nav>
                 <ul>
                   {vehicles
@@ -68,15 +88,18 @@ const Reservations = () => {
                       <li key={vehicle.id}>
                         <a
                           style={
-                            selectedVehicle.id === vehicle.id
+                            selectedVehicle?.id === vehicle?.id
                               ? {
                                   fontWeight: 900,
-                                  background: '#1a95e0',
-                                  color: '#fff',
+                                  background: 'var(--primary-color)',
+                                  color: 'var(--invert-font-color)',
                                 }
                               : {}
                           }
-                          onClick={() => setSelectedVehicle(vehicle)}
+                          onClick={() => {
+                            setSelectedVehicle(vehicle);
+                            setSelectedVehicleType(null);
+                          }}
                         >
                           {vehicle.name}
                         </a>
@@ -88,7 +111,10 @@ const Reservations = () => {
           ))}
         </aside>
         <main>
-          <ReservationsCalendar vehicle={selectedVehicle} />
+          <ReservationsCalendar
+            vehicle={selectedVehicle}
+            vehicleType={selectedVehicleType}
+          />
         </main>
       </div>
     </div>

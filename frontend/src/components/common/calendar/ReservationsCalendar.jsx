@@ -38,7 +38,7 @@ export const reservationActions = {
   },
 };
 
-export const ReservationsCalendar = ({ vehicle }) => {
+export const ReservationsCalendar = ({ vehicle, vehicleType }) => {
   const [initialReservations, setInitialReservations] = useState([]);
   const [dateInfo, setDateInfo] = useState({});
   const [modalIsOpen, setModalIsOpen] = useState(false);
@@ -52,10 +52,11 @@ export const ReservationsCalendar = ({ vehicle }) => {
     if (calendarRef.current) {
       calendarRef.current.getApi().removeAllEvents();
     }
-    if (dateInfo.start && dateInfo.end && vehicle.id) {
+    if (dateInfo.start && dateInfo.end && (vehicle || vehicleType)) {
+      console.log(vehicle, vehicleType);
       fetch(
         `/api/reservations/${
-          vehicle.id
+          vehicle ? `vehicle/${vehicle.id}` : `type/${vehicleType.id}`
         }?start=${dateInfo.start.toISOString()}&end=${dateInfo.end.toISOString()}`,
         {
           method: 'GET',
@@ -74,7 +75,7 @@ export const ReservationsCalendar = ({ vehicle }) => {
           ),
         );
     }
-  }, [dateInfo, vehicle.id]);
+  }, [dateInfo, vehicle, vehicleType]);
 
   const createFromCalendar = (event) => {
     setSelectedAction('create');
@@ -148,10 +149,10 @@ export const ReservationsCalendar = ({ vehicle }) => {
           editable={signedIn}
           selectable={signedIn}
           height={600}
-          eventOverlap={false}
+          eventOverlap={!!vehicleType?.id}
           customButtons={{
             customTitle: {
-              text: vehicle.name,
+              text: vehicle?.name || vehicleType?.name || '',
             },
           }}
           headerToolbar={{
@@ -163,7 +164,7 @@ export const ReservationsCalendar = ({ vehicle }) => {
           initialView="timeGridWeek"
           events={initialReservations}
           datesSet={(dateInfo) => setDateInfo(dateInfo)}
-          select={createFromCalendar}
+          select={vehicle ? createFromCalendar : null}
           eventClick={signedIn ? handleEventClick : null}
           eventChange={signedIn ? patchReservation : null}
         />
