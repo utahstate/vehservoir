@@ -11,6 +11,7 @@
     "concurrently": "^7.4.0"
   },
   "dependencies": {
-    "@nestjs/config": "^2.2.0"
+    "@nestjs/config": "^2.2.0",
+    "react-icons": "^4.4.0"
   }
 }

@@ -139,7 +139,7 @@ export class ReservationController {
     return vehicle;
   }
 
-  @Get('/api/reservations/:vehicleId')
+  @Get('/api/reservations/vehicle/:vehicleId')
   @ApiOperation({ summary: 'Gets all reservations for a given vehicle id.' })
   async getReservationsByVehicleId(
     @Param('vehicleId') vehicleId: number,
@@ -150,20 +150,32 @@ export class ReservationController {
       throw new HttpException('Invalid Dates', HttpStatus.BAD_REQUEST);
     }
 
-    return (
-      await this.reservationService.findReservationsBy(
-        {
-          vehicle: { id: vehicleId },
-          start: Between(start, end),
-        },
-        { vehicle: true, request: true },
-      )
-    ).map((x) => {
-      if (x.request?.userName) {
-        // Return only first name
-        x.request.userName = x.request.userName.split(' ')[0];
-      }
-      return x;
-    });
+    return await this.reservationService.findReservationsBy(
+      {
+        vehicle: { id: vehicleId },
+        start: Between(start, end),
+      },
+      { vehicle: true, request: true },
+    );
+  }
+
+  @Get('/api/reservations/type/:typeId')
+  @ApiOperation({ summary: 'Gets all reservations for a given vehicle id.' })
+  async getReservationsByVehicleTypeId(
+    @Param('typeId') typeId: number,
+    @Query('start') start: Date,
+    @Query('end') end: Date,
+  ): Promise<Reservation[]> {
+    if (!(start && end) || start.getTime() >= end.getTime()) {
+      throw new HttpException('Invalid Dates', HttpStatus.BAD_REQUEST);
+    }
+
+    return await this.reservationService.findReservationsBy(
+      {
+        vehicle: { type: { id: typeId } },
+        start: Between(start, end),
+      },
+      { vehicle: true, request: true },
+    );
   }
 }

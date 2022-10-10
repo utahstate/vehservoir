@@ -836,19 +836,17 @@ export const VehicleParkingLot = () => {
         gap: '1rem',
       }}
     >
-      <div>
+      <>
         {currentReservations.map((reservation: Reservation) => {
           return (
             <div key={reservation.id}>
-              <div>
-                {reservation.vehicle.name}&apos;s reservation will end in
-                <span style={{ color: 'green' }}>
-                  {' ' +
-                    new Date(reservation.end.getTime() - Date.now())
-                      .toISOString()
-                      .substring(11, 19)}
-                </span>
-              </div>
+              {reservation.vehicle.name}&apos;s reservation will end in
+              <span style={{ color: 'green' }}>
+                {' ' +
+                  new Date(reservation.end.getTime() - Date.now())
+                    .toISOString()
+                    .substring(11, 19)}
+              </span>
               <div className="progress-bar">
                 <div
                   className="progress-bar-filled"
@@ -864,7 +862,7 @@ export const VehicleParkingLot = () => {
             </div>
           );
         })}
-      </div>
+      </>
 
       <canvas
         ref={canvasRef}
