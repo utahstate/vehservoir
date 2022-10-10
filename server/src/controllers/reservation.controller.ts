@@ -150,12 +150,20 @@ export class ReservationController {
       throw new HttpException('Invalid Dates', HttpStatus.BAD_REQUEST);
     }
 
-    return await this.reservationService.findReservationsBy(
-      {
-        vehicle: { id: vehicleId },
-        start: Between(start, end),
-      },
-      { vehicle: true, request: true },
-    );
+    return (
+      await this.reservationService.findReservationsBy(
+        {
+          vehicle: { id: vehicleId },
+          start: Between(start, end),
+        },
+        { vehicle: true, request: true },
+      )
+    ).map((x) => {
+      if (x.request?.userName) {
+        // Return only first name
+        x.request.userName = x.request.userName.split(' ')[0];
+      }
+      return x;
+    });
   }
 }

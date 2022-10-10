@@ -4,10 +4,8 @@ import {
   IsString,
   IsNumber,
   IsPositive,
-  MinDate,
   ValidationOptions,
   registerDecorator,
-  MaxDate,
 } from 'class-validator';
 
 const PeriodExtendsLessThanRange = (
@@ -54,6 +52,48 @@ const IsBefore = (property: string, validationOptions?: ValidationOptions) => {
   };
 };
 
+const AfterOrEqualTime = (
+  dateReturner: () => Date,
+  validationOptions?: ValidationOptions,
+) => {
+  return (obj, propertyName: string) => {
+    registerDecorator({
+      name: 'isAfterOrEqualTime',
+      target: obj.constructor,
+      propertyName: propertyName,
+      constraints: [dateReturner],
+      options: validationOptions,
+      validator: {
+        validate(value, validationArguments?) {
+          const [dateReturner] = validationArguments.constraints;
+          return value.getTime() >= dateReturner().getTime();
+        },
+      },
+    });
+  };
+};
+
+const BeforeOrEqualTime = (
+  dateReturner: () => Date,
+  validationOptions?: ValidationOptions,
+) => {
+  return (obj, propertyName: string) => {
+    registerDecorator({
+      name: 'isBeforeOrEqualTime',
+      target: obj.constructor,
+      propertyName: propertyName,
+      constraints: [dateReturner],
+      options: validationOptions,
+      validator: {
+        validate(value, validationArguments?) {
+          const [dateReturner] = validationArguments.constraints;
+          return value.getTime() <= dateReturner().getTime();
+        },
+      },
+    });
+  };
+};
+
 export class Free {
   /**
    * The vehicle type for a given reservation.
@@ -71,7 +111,7 @@ export class Free {
   @Type(() => Number)
   @PeriodExtendsLessThanRange('start', 'end', {
     message:
-      'Reservation period must be less than (or equal) to the difference in hours of the search dates',
+      'Reservation period must be less than (or equal) to the difference in seconds of the search dates',
   })
   periodSeconds: number;
 
@@ -92,11 +132,11 @@ export class Free {
    */
   @IsDate()
   @Type(() => Date)
-  @MinDate(new Date(), {
+  @AfterOrEqualTime(() => new Date(), {
     message: 'End date must be after current time',
   })
-  @MaxDate(new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), {
-    message: 'End date must be less than 3 days in the future',
+  @BeforeOrEqualTime(() => new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), {
+    message: 'End date must be less than 7 days in the future',
   })
   end: Date;
 
