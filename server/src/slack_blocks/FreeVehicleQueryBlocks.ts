@@ -13,6 +13,7 @@ interface FreeVehicleQueryBlocksProps {
     tz_offset: number;
   };
   params: {
+    advanced: boolean;
     vehicleTypes: VehicleType[];
     selectedVehicleType?: VehicleType;
     error?: string;
@@ -25,7 +26,7 @@ export const FreeVehicleQueryBlocks = ({
 }: FreeVehicleQueryBlocksProps) => {
   const userTimeNow = toTimeZone(new Date(), user.tz);
   return Modal({
-    title: 'Reserve Vehicle',
+    title: 'Reserve a Vehicle',
     submit: 'Find Available Vehicles',
   })
     .blocks(
@@ -55,7 +56,7 @@ export const FreeVehicleQueryBlocks = ({
           ),
       ),
       Blocks.Input({
-        label: 'Available Start Date',
+        label: `${params.advanced ? 'Search Available' : ''}Start Date`,
         blockId: 'startDate',
       }).element(
         ((x) =>
@@ -68,7 +69,7 @@ export const FreeVehicleQueryBlocks = ({
         ),
       ),
       Blocks.Input({
-        label: 'Available Start Time',
+        label: `${params.advanced ? 'Search Available ' : ''} Start Time`,
         blockId: 'startTime',
       }).element(
         ((x) =>
@@ -83,7 +84,7 @@ export const FreeVehicleQueryBlocks = ({
         ),
       ),
       Blocks.Input({
-        label: 'Available End Date',
+        label: `${params.advanced ? 'Search Available ' : ''}End Date`,
         blockId: 'endDate',
       }).element(
         ((x) =>
@@ -112,7 +113,7 @@ export const FreeVehicleQueryBlocks = ({
         ),
       ),
       Blocks.Input({
-        label: 'Available End Time',
+        label: `${params.advanced ? 'Search Available ' : ''}End Time`,
         blockId: 'endTime',
       }).element(
         ((x) =>
@@ -130,22 +131,24 @@ export const FreeVehicleQueryBlocks = ({
           }),
         ),
       ),
-      Blocks.Input({
-        label: 'Reservation Length (Hours)',
-        blockId: 'reservationPeriod',
-      }).element(
-        Elements.StaticSelect({
-          placeholder: 'Reservation length in hours...',
-          actionId: 'reservationPeriod',
-        }).options(
-          DEFAULT_RESERVATION_PERIOD_LENGTH_HRS.map((periodHourLength) =>
-            Bits.Option({
-              text: periodHourLength.toFixed(2),
-              value: (periodHourLength * 60 * 60).toString(10),
-            }),
-          ),
-        ),
-      ),
+      params.advanced
+        ? Blocks.Input({
+            label: 'Reservation Length (Hours)',
+            blockId: 'reservationPeriod',
+          }).element(
+            Elements.StaticSelect({
+              placeholder: 'Reservation length in hours...',
+              actionId: 'reservationPeriod',
+            }).options(
+              DEFAULT_RESERVATION_PERIOD_LENGTH_HRS.map((periodHourLength) =>
+                Bits.Option({
+                  text: periodHourLength.toFixed(2),
+                  value: (periodHourLength * 60 * 60).toString(10),
+                }),
+              ),
+            ),
+          )
+        : null,
       params.error
         ? Blocks.Section({
             text: `⚠️ \`\`\`${params.error}\`\`\` ⚠️`,
