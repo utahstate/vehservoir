@@ -61,7 +61,7 @@ const AdminNavigation: React.FC = (): JSX.Element => {
     );
     root.style.setProperty(
       '--progress-bar-fill',
-      theme === 'dark' ? '#222225' : '#fff',
+      theme === 'dark' ? '#62c4ff' : '#151515',
     );
     root.style.setProperty(
       '--code-bg-color',
