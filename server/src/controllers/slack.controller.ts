@@ -38,7 +38,7 @@ export interface ReservationFindAvailableViewState {
   endDate: { endDate: { type: string; selected_date: string } };
   startTime: { startTime: { type: string; selected_time: string } };
   endTime: { endTime: { type: string; selected_time: string } };
-  reservationPeriod: {
+  reservationPeriod?: {
     reservationPeriod: {
       type: string;
       selected_option: { text: string; value: string };
@@ -283,7 +283,7 @@ export class SlackController {
       );
 
     if (!vehicleAvailabilities.length) {
-      return `No quick reservations could be found for any vehicles with type \`${vehicleType.name}\`.\nUse \`/reserve\` for a more advanced reservation query.`;
+      return `No quick reservations could be found for any vehicles with type \`${vehicleType.name}\`.\nUse \`/reserve\` or \`/reserve advanced\` for a more advanced query.`;
     }
 
     const user = await this.getUserDetails(req.user_id);
@@ -365,6 +365,7 @@ export class SlackController {
             { vehicleType: true },
           )
         )?.vehicleType,
+        advanced: req.text && req.text === 'advanced',
         vehicleTypes: await this.vehicleService.allVehicleTypes(),
       },
       user: await this.getUserDetails(req.user_id),
@@ -664,10 +665,12 @@ export class SlackController {
 
     const validateFreeBody = new Free(
       findVehicleValues.type.type.selected_option.value,
-      parseFloat(
-        findVehicleValues.reservationPeriod.reservationPeriod.selected_option
-          .value,
-      ),
+      findVehicleValues.reservationPeriod
+        ? parseFloat(
+            findVehicleValues.reservationPeriod.reservationPeriod
+              .selected_option.value,
+          )
+        : (endDate.getTime() - startDate.getTime()) / 1000,
       startDate,
       endDate,
     );
