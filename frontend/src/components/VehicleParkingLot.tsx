@@ -545,8 +545,8 @@ const CanvasDimensions: Dimension = {
 };
 
 const VehicleDimensions: Dimension = {
-  width: 90,
-  height: 121,
+  width: 120,
+  height: 160,
 };
 
 const getBrightness = (hexColor: string) => {
