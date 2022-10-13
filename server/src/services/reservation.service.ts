@@ -1,6 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DeleteResult, LessThanOrEqual, Repository } from 'typeorm';
+import {
+  DeleteResult,
+  LessThanOrEqual,
+  MoreThanOrEqual,
+  Repository,
+} from 'typeorm';
 import { Reservation } from 'src/entities/reservation.entity';
 import { Cron } from '@nestjs/schedule';
 import { ReservationGateway } from 'src/gateways/reservation.gateway';
@@ -78,5 +83,15 @@ export class ReservationService {
 
     this.reservationGateway.handleReservationDeleted(reservation);
     return this.reservationRepo.delete(reservation);
+  }
+
+  async currentReservationsWithVehicles(): Promise<Reservation[]> {
+    return await this.findReservationsBy(
+      {
+        start: LessThanOrEqual(new Date()),
+        end: MoreThanOrEqual(new Date()),
+      },
+      { vehicle: true },
+    );
   }
 }

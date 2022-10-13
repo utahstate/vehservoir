@@ -14,12 +14,7 @@ import {
 import { ReservationService } from 'src/services/reservation.service';
 import { Reservation } from 'src/entities/reservation.entity';
 import { ReservationDto } from 'dto/reservations/Reservation.dto';
-import {
-  Between,
-  DeleteResult,
-  LessThanOrEqual,
-  MoreThanOrEqual,
-} from 'typeorm';
+import { Between, DeleteResult } from 'typeorm';
 import { VehicleService } from 'src/services/vehicle.service';
 import { Vehicle } from 'src/entities/vehicle.entity';
 import { JwtAuthGuard } from 'src/auth/jwt_auth';
@@ -42,13 +37,7 @@ export class ReservationController {
   @Get('/api/reservations/current')
   @ApiOperation({ summary: 'Gets current reservations.' })
   async getCurrentReservations(): Promise<Reservation[]> {
-    return await this.reservationService.findReservationsBy(
-      {
-        start: LessThanOrEqual(new Date()),
-        end: MoreThanOrEqual(new Date()),
-      },
-      { vehicle: true },
-    );
+    return await this.reservationService.currentReservationsWithVehicles();
   }
 
   @UseGuards(JwtAuthGuard)

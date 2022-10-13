@@ -627,7 +627,7 @@ export const VehicleParkingLot = () => {
       ) {
         // Ensure we are not unparking a vehicle if the reservation is already over
         toast.info(
-          `${reservation.vehicle.name} is being reserved`,
+          `${reservation.vehicle.name} has a current reservation`,
           toastParams,
         );
         parkingLot.unParkVehicle(referencedVehicle, randomExitPoint());
@@ -642,7 +642,10 @@ export const VehicleParkingLot = () => {
         // No need to re-park a vehicle if it's already parked
         return;
       }
-      toast.info(`${reservation.vehicle.name} is being reserved`, toastParams);
+      toast.info(
+        `${reservation.vehicle.name} is no longer reserved`,
+        toastParams,
+      );
       removeCurrentReservation(reservation);
 
       if (referencedVehicle) {

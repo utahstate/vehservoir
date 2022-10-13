@@ -1,4 +1,5 @@
 import { forwardRef, Inject } from '@nestjs/common';
+import { Cron } from '@nestjs/schedule';
 import { WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
 import { Server } from 'socket.io';
 import { Reservation } from 'src/entities/reservation.entity';
@@ -18,8 +19,24 @@ export class ReservationGateway {
 
   private reservationTimeouts = new Map<number, NodeJS.Timeout>();
 
+  private setTimeoutForReservationInFuture(reservation: Reservation) {
+    this.reservationTimeouts.set(
+      reservation.id,
+      setTimeout(() => {
+        this.maybeRemindClientsOfReservation(reservation);
+      }, Math.max(0, reservation.start.getTime() - Date.now()) + TIMEOUT_ENSURE_DELTA_MS),
+    );
+  }
+
+  @Cron('*/15 * * * * *')
+  private async maybeUpdateCurrentTimeouts() {
+    (await this.reservationService.currentReservationsWithVehicles())
+      .filter((reservation) => !this.reservationTimeouts.has(reservation.id))
+      .map((reservation) => this.setTimeoutForReservationInFuture(reservation));
+  }
+
   private async maybeRemindClientsOfReservation(reservation: Reservation) {
-    const newReservation = await this.reservationService.findOne(
+    const updatedReservation = await this.reservationService.findOne(
       {
         id: reservation.id,
       },
@@ -27,20 +44,17 @@ export class ReservationGateway {
     );
 
     if (
-      newReservation &&
-      newReservation.start.getTime() <= Date.now() &&
-      newReservation.end.getTime() >= Date.now()
+      updatedReservation &&
+      updatedReservation.start.getTime() <= Date.now() &&
+      updatedReservation.end.getTime() >= Date.now()
     ) {
-      this.server.emit('reservationStarted', newReservation);
-      this.reservationTimeouts.set(
-        reservation.id,
-        setTimeout(
-          () => this.maybeRemindClientsOfReservation(newReservation),
-          newReservation.end.getTime() - Date.now() + TIMEOUT_ENSURE_DELTA_MS,
-        ),
-      );
-    } else if (newReservation && newReservation.end.getTime() <= Date.now()) {
-      this.server.emit('reservationEnded', newReservation);
+      this.server.emit('reservationStarted', updatedReservation);
+      this.setTimeoutForReservationInFuture(updatedReservation);
+    } else if (
+      updatedReservation &&
+      updatedReservation.end.getTime() <= Date.now()
+    ) {
+      this.server.emit('reservationEnded', updatedReservation);
       this.reservationTimeouts.delete(reservation.id);
     }
   }
@@ -50,12 +64,7 @@ export class ReservationGateway {
     if (this.reservationTimeouts.has(reservation.id)) {
       clearTimeout(this.reservationTimeouts.get(reservation.id));
     }
-    this.reservationTimeouts.set(
-      reservation.id,
-      setTimeout(() => {
-        this.maybeRemindClientsOfReservation(reservation);
-      }, Math.max(0, reservation.start.getTime() - Date.now()) + TIMEOUT_ENSURE_DELTA_MS),
-    );
+    this.setTimeoutForReservationInFuture(reservation);
     this.server.emit('reservationSaved', reservation);
   }
 

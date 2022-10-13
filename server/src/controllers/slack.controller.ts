@@ -77,11 +77,6 @@ export interface SlackUser {
   tz: string;
 }
 
-const FILL_FORM_MESSAGE = "Here's that form for ya 📝.";
-const REMIND_MESSAGE_USER_THRESHOLD_SEC = 5 * 60;
-const formatErrors = (errors: string[]) =>
-  errors.map((x) => `* ${x}`).join('\n');
-
 export const formatReservation = (reservation: Reservation, timeZone: string) =>
   reservation.vehicle.name +
   ' | ' +
@@ -104,11 +99,16 @@ export class SlackController {
   }
 
   static DEFAULT_QUICKRESERVE_PERIOD_SEC = 60 * 60;
+  static FILL_FORM_MESSAGE = "Here's that form for ya 📝.";
+  static REMIND_MESSAGE_USER_THRESHOLD_SEC = 5 * 60;
+
+  static formatErrors = (errors: string[]) =>
+    errors.map((x) => `* ${x}`).join('\n');
 
   @Cron('*/15 * * * * *')
   async remindUsers() {
     const sendMessageMinDate = new Date(
-      new Date().setSeconds(REMIND_MESSAGE_USER_THRESHOLD_SEC),
+      new Date().setSeconds(SlackController.REMIND_MESSAGE_USER_THRESHOLD_SEC),
     );
     const reservationsToRemind =
       await this.reservationService.findReservationsBy(
@@ -164,7 +164,7 @@ export class SlackController {
     const { reservations, errors } =
       await this.getUserCurrentReservationsOrErrors(user);
     if (errors) {
-      return '```' + formatErrors(errors) + '```';
+      return '```' + SlackController.formatErrors(errors) + '```';
     }
 
     return (
@@ -192,7 +192,7 @@ export class SlackController {
     const { reservations, errors } =
       await this.getUserCurrentReservationsOrErrors(user);
     if (errors) {
-      return '`' + formatErrors(errors) + '`';
+      return '`' + SlackController.formatErrors(errors) + '`';
     }
 
     this.viewStates[external_id] = {
@@ -220,7 +220,7 @@ export class SlackController {
         },
       },
     );
-    return FILL_FORM_MESSAGE;
+    return SlackController.FILL_FORM_MESSAGE;
   }
 
   /**
@@ -389,7 +389,7 @@ export class SlackController {
         },
       },
     );
-    return FILL_FORM_MESSAGE;
+    return SlackController.FILL_FORM_MESSAGE;
   }
 
   /**
@@ -441,7 +441,8 @@ export class SlackController {
             response_action: 'clear',
           };
         }
-        this.viewStates[external_id].params.error = formatErrors(errors);
+        this.viewStates[external_id].params.error =
+          SlackController.formatErrors(errors);
         return {
           response_action: 'update',
           view: JSON.stringify({
@@ -461,7 +462,8 @@ export class SlackController {
 
         if (errors) {
           this.viewStates[external_id].modal = ReserveModal.FINDING_VEHICLE;
-          this.viewStates[external_id].params.error = formatErrors(errors);
+          this.viewStates[external_id].params.error =
+            SlackController.formatErrors(errors);
           return {
             response_action: 'update',
             view: JSON.stringify({
@@ -493,7 +495,8 @@ export class SlackController {
         );
 
         if (errors.length) {
-          this.viewStates[external_id].params.error = formatErrors(errors);
+          this.viewStates[external_id].params.error =
+            SlackController.formatErrors(errors);
           return {
             response_action: 'update',
             view: JSON.stringify({

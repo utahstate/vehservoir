@@ -1,6 +1,6 @@
 import React from 'react';
 import { Outlet } from 'react-router-dom';
-import AdminNavigation from '../components/admin/AdminNavigation';
+import AdminNavigation from '../components/admin/Navigation';
 const Dashboard: React.FC = (): JSX.Element => {
   return (
     <>

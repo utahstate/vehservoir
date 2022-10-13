@@ -1,15 +1,17 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthContext } from '../../context/AuthContext';
 import LoginModal from './LoginModal';
 import { FaMoon } from 'react-icons/fa';
 import { BsSun } from 'react-icons/bs';
+import { useTheme } from '../../hooks/UseTheme';
 
 const AdminNavigation: React.FC = (): JSX.Element => {
   const { signedIn, setSignedIn, setSessionOver, setUserId } = useAuthContext();
   const [loginModalIsOpen, setLoginModalIsOpen] =
     React.useState<boolean>(false);
-  const [theme, setTheme] = useState('light');
+
+  const [theme, setTheme] = useTheme();
 
   const handleLogout = (e: React.SyntheticEvent): void => {
     e.preventDefault();
@@ -23,51 +25,6 @@ const AdminNavigation: React.FC = (): JSX.Element => {
       setSessionOver(new Date());
     });
   };
-
-  useEffect(() => {
-    const root = document.documentElement;
-
-    root.style.setProperty(
-      '--background-color',
-      theme === 'dark' ? '#222225' : '#fff',
-    );
-    root.style.setProperty(
-      '--font-color',
-      theme === 'dark' ? '#e8e9ed' : '#151515',
-    );
-    root.style.setProperty(
-      '--invert-font-color',
-      theme === 'dark' ? '#222225' : '#fff',
-    );
-    root.style.setProperty(
-      '--secondary-color',
-      theme === 'dark' ? '#a3abba' : '#727578',
-    );
-    root.style.setProperty(
-      '--tertiary-color',
-      theme === 'dark' ? '#a3abba' : '#fff',
-    );
-    root.style.setProperty(
-      '--primary-color',
-      theme === 'dark' ? '#62c4ff' : '#1a95e0',
-    );
-    root.style.setProperty(
-      '--error-color',
-      theme === 'dark' ? '#ff3c74' : '#d20962',
-    );
-    root.style.setProperty(
-      '--progress-bar-background',
-      theme === 'dark' ? '#3f3f44' : '#727578',
-    );
-    root.style.setProperty(
-      '--progress-bar-fill',
-      theme === 'dark' ? '#62c4ff' : '#151515',
-    );
-    root.style.setProperty(
-      '--code-bg-color',
-      theme === 'dark' ? '#222225' : '#fff',
-    );
-  }, [theme]);
 
   return (
     <section>
@@ -95,7 +52,9 @@ const AdminNavigation: React.FC = (): JSX.Element => {
               ) : null}
               <li>
                 <button
-                  onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                  onClick={() => {
+                    setTheme(theme === 'dark' ? 'light' : 'dark');
+                  }}
                   style={{
                     padding: 0,
                     border: '1px solid var(--secondary-color)',
