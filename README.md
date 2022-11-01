@@ -72,11 +72,11 @@ Finally, add the slash commands (in "Slash Commands"):
 
 The file `.env.example` in the project root lists the environment variables necessary to run the application.
 
-From the slack installation section, there should be both a slack bot token listed in "OAuth & Permissions" in the Slack App portal, as well as a signing secret in "Basic Information". Copy those to the respective variables.
+From the slack installation section, there should be both a slack bot token listed in "OAuth & Permissions" in the Slack App Portal, as well as a signing secret in "Basic Information". Copy those to their respective env vars.
 
-Additionally, there is a `RESERVATION_CHANNEL_ID` variable that is set from the channel id you wish to restrict the application to.
+Additionally, set `RESERVATION_CHANNEL_ID` to the channel id you wish to restrict the application to.
 
-Each `POSTGRES` variable should specify a connection specification to a new database you've created.
+Each `POSTGRES` variable should contain new values that the postgres docker image will use to create the database.
 
 Finally, ensure `JWT_SECRET` is a somewhat long random sequence of characters. You can generate one with `head -c 32 /dev/urandom | base64`.
 
@@ -85,20 +85,21 @@ Finally, ensure `JWT_SECRET` is a somewhat long random sequence of characters. Y
 
 ## Development
 
+0. Have `postgres` and `node` setup on your machine
 1.  Run `npm i` in each of `server`, `frontend`, and the root directory
-2.  Copy `.env.example` from the root into `server/.env`, setting the environment variables as described above, and ensuring `NODE_ENV=development` and `POSTGRES_HOSTNAME` is probably `localhost`
-3.  In the root project directory, spin up the application with `npm run dev`
+2.  Copy `.env.example` from the root into `server/.env`, setting the environment variables as described above, ensuring `NODE_ENV=development` and `POSTGRES_HOSTNAME` is, most likely, `localhost`
+3.  Spin up vehservoir via `npm run dev` in the root directory
 4.  Follow the steps below to seed an admin user
-5.  (optional, for testing slack integrations) Point the slack endpoints to your backend running locally via `ngrok http 4000` and change the endpoints in each of the slash commands and in the interactions url (as mentioned above) to your ngrok-served host.
+5.  (optional, for slack integrations) Point the slack endpoints to the locally running backend via `ngrok http <port (likely 4000)>` and change the endpoints in each of the slash commands and interactions url (as mentioned above in the "Usage > Slack" section) to your ngrok link.
 
 
 <a id="org5545ceb"></a>
 
 ## Deployment
 
-Deployment is "easy" with the docker compose file.
+Deployment is "easy" with `docker-compose`!
 
-1.  Copy `.env.example` from the root into `.env` (as specified in `docker-compose.yml`), setting the environment variables as described above, and ensuring `NODE_ENV=production` and `POSTGRES_PASSWORD` to a random string of characters
+1.  Use `.env.example` as a template for your `.env`, setting the environment variables as described above, ensuring `NODE_ENV=production` and `POSTGRES_PASSWORD` to a secure random string of characters.
 2.  `docker compose up`
 3.  Follow the steps below to seed an admin user into postgres (enter the postgres REPL by running `docker compose exec -it db psql -U vehservoir`)
 
@@ -107,12 +108,11 @@ Deployment is "easy" with the docker compose file.
 
 ## Seeding
 
-1.  Ensure that you're in the database vehservoir is using (it should have auto-migrated by now)
-2.  Create a bcrypt-ed password by visiting <https://bcrypt.online/> or another online service (this is fine for temporary purposes)
-    -   Alternatively, just use this value (it's "password"): `$2y$10$pLnySAAsMIjjqhKhH8ItFOwNpqpf.8FuDMHAu8EvJ6jtAGT9Hxh16`
-3.  `insert into admin ("username", "password") values ('admin', 'theHashedPasswordYouCreated');`
-4.  Go to the vehservoir application and attempt to sign in with your username and password.
-5.  Create at least one vehicle in the "Vehicles" tab.
+1.  Bcrypt a temporary administrator password <https://bcrypt.online/>
+    - Alternatively, just use this: `$2y$10$pLnySAAsMIjjqhKhH8ItFOwNpqpf.8FuDMHAu8EvJ6jtAGT9Hxh16` (it's "password")
+2.  `insert into admin ("username", "password") values ('admin', 'theHashedPasswordHere');`
+3.  Navigate to vehservoir, and authenticate as admin via your username and password.
+4.  Create at least one vehicle in the "Vehicles" tab.
 
 
 <a id="org2c98da7"></a>
@@ -122,4 +122,3 @@ Deployment is "easy" with the docker compose file.
 I mean, we have vehicle controller and helper date function tests, but otherwise it's mostly non-existant.
 
 Try anyways by running `npm run test` in `server`.
-
