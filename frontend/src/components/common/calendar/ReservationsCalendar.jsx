@@ -53,7 +53,6 @@ export const ReservationsCalendar = ({ vehicle, vehicleType }) => {
       calendarRef.current.getApi().removeAllEvents();
     }
     if (dateInfo.start && dateInfo.end && (vehicle || vehicleType)) {
-      console.log(vehicle, vehicleType);
       fetch(
         `/api/reservations/${
           vehicle ? `vehicle/${vehicle.id}` : `type/${vehicleType.id}`

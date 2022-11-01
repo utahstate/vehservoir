@@ -22,7 +22,8 @@ const Modal: FC<Props> = ({ title, children }) => {
     >
       <div
         style={{
-          backgroundColor: '#fff',
+          backgroundColor: 'var(--background-color)',
+          color: 'var(--font-color)',
           padding: 20,
           border: '1px solid #000',
           width: '80%',
