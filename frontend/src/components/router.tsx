@@ -6,6 +6,7 @@ import Vehicles from '../pages/admin/Vehicles';
 import Reservations from '../pages/Reservations';
 import { useAuthContext } from '../context/AuthContext';
 import { VehicleParkingLot } from './VehicleParkingLot';
+import { PageNotFound } from '../pages/PageNotFound';
 
 export const Router: React.FC = (): JSX.Element => {
   const { signedIn } = useAuthContext();
@@ -20,6 +21,7 @@ export const Router: React.FC = (): JSX.Element => {
           <Route path=":vehicleId" element={<Reservations />} />
         </Route>
       </Route>
+      <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
 };
