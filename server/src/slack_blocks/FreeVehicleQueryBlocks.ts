@@ -56,7 +56,7 @@ export const FreeVehicleQueryBlocks = ({
           ),
       ),
       Blocks.Input({
-        label: `${params.advanced ? 'Search Available' : ''}Start Date`,
+        label: `${params.advanced ? 'Search Available' : ''} Start Date`,
         blockId: 'startDate',
       }).element(
         ((x) =>
@@ -84,7 +84,7 @@ export const FreeVehicleQueryBlocks = ({
         ),
       ),
       Blocks.Input({
-        label: `${params.advanced ? 'Search Available ' : ''}End Date`,
+        label: `${params.advanced ? 'Search Available ' : ''} End Date`,
         blockId: 'endDate',
       }).element(
         ((x) =>
