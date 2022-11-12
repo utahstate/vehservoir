@@ -22,22 +22,16 @@
 
 <a id="orgaa18786"></a>
 
+
 # Introduction
 
 Vehservoir (vehicle reservation reservoir) is a vehicle reservation system for USU IT, with a slack integration and real-time parking-lot visualization.
 
-https://user-images.githubusercontent.com/25559600/194674481-bb52bc53-0ffb-48a5-8fdd-8f4a00caed12.mp4
-
 <a id="orgbbd3e6b"></a>
 
-# Documentation
 
-View the dev-only Swagger API documentation at `/api/` on the backend host (likely `http://localhost:4000`).
+https://user-images.githubusercontent.com/25559600/201492887-5cc75b32-6985-477e-8c88-4c618571bd61.mov
 
-Additionally, you may view the initial design decisions made (and a fun little diagram) in the `/docs`.
-
-
-<a id="orgc600c98"></a>
 
 # Usage
 
@@ -117,8 +111,14 @@ Deployment is "easy" with `docker-compose`!
 
 <a id="org2c98da7"></a>
 
+# Documentation
+
+View the dev-only Swagger API documentation at `/api/` on the backend host (likely `http://localhost:4000`).
+
+Additionally, you may view the initial design decisions made (and a fun little diagram) in the `/docs`.
+
+<a id="orgc600c98"></a>
+
 # Testing
 
-I mean, we have vehicle controller and helper date function tests, but otherwise it's mostly non-existant.
-
-Try anyways by running `npm run test` in `server`.
+There are a few controller and helper date function unit tests that can be run with `npm run test` in `server`.
