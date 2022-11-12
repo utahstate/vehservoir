@@ -2,13 +2,13 @@
 # Table of Contents
 
 1.  [Introduction](#orgaa18786)
-2.  [Documentation](#orgbbd3e6b)
-3.  [Usage](#orgc600c98)
+2.  [Usage](#orgc600c98)
     1.  [Slack](#org4ef4b9e)
     2.  [Environment variables](#org595ccee)
     3.  [Development](#org0feba35)
     4.  [Deployment](#org5545ceb)
     5.  [Seeding](#org4c052d9)
+3.  [Documentation](#orgbbd3e6b)
 4.  [Testing](#org2c98da7)
 ```
      __  __          __                                                         
