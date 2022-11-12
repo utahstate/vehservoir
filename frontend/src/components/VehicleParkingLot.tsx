@@ -840,7 +840,7 @@ export const VehicleParkingLot = () => {
       }}
     >
       <>
-        {currentReservations.map((reservation: Reservation) => {
+        {currentReservations.sort((r1: Reservation, r2: Reservation) => r1.end.getTime() - r2.end.getTime()).map((reservation: Reservation) => {
           return (
             <div key={reservation.id}>
               {reservation.vehicle.name}&apos;s reservation will end in
