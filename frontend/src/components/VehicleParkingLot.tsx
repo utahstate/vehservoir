@@ -4,17 +4,6 @@ import { ToastContainerProps } from 'react-toastify/dist/types';
 import { useReservationSocket } from '../hooks/UseReservationSocket';
 import { VehicleData } from '../pages/admin/Vehicles';
 
-/*
- _____
-/     \
-vvvvvvv  /|__/|
-   I   /O,O   |
-   I /_____   |      /|/|
-  J|/^ ^ ^ \  |    /00  |    _//|
-   |^ ^ ^ ^ |W|   |/^^\ |   /oo |
-   \m___m__|_|    \m_m_|   \mm_|
-*/
-
 interface Dimension {
   width: number;
   height: number;
@@ -840,31 +829,36 @@ export const VehicleParkingLot = () => {
       }}
     >
       <>
-        {currentReservations.sort((r1: Reservation, r2: Reservation) => r1.end.getTime() - r2.end.getTime()).map((reservation: Reservation) => {
-          return (
-            <div key={reservation.id}>
-              {reservation.vehicle.name}&apos;s reservation will end in
-              <span style={{ color: 'green' }}>
-                {' ' +
-                  new Date(reservation.end.getTime() - Date.now())
-                    .toISOString()
-                    .substring(11, 19)}
-              </span>
-              <div className="progress-bar">
-                <div
-                  className="progress-bar-filled"
-                  style={{
-                    width: `${Math.floor(
-                      (100 * (Date.now() - reservation.start.getTime())) /
-                        (reservation.end.getTime() -
-                          reservation.start.getTime()),
-                    )}%`,
-                  }}
-                />
+        {currentReservations
+          .sort(
+            (r1: Reservation, r2: Reservation) =>
+              r1.end.getTime() - r2.end.getTime(),
+          )
+          .map((reservation: Reservation) => {
+            return (
+              <div key={reservation.id}>
+                {reservation.vehicle.name}&apos;s reservation will end in
+                <span style={{ color: 'green' }}>
+                  {' ' +
+                    new Date(reservation.end.getTime() - Date.now())
+                      .toISOString()
+                      .substring(11, 19)}
+                </span>
+                <div className="progress-bar">
+                  <div
+                    className="progress-bar-filled"
+                    style={{
+                      width: `${Math.floor(
+                        (100 * (Date.now() - reservation.start.getTime())) /
+                          (reservation.end.getTime() -
+                            reservation.start.getTime()),
+                      )}%`,
+                    }}
+                  />
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
       </>
 
       <canvas
